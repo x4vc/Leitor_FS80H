@@ -1,0 +1,4 @@
+grant {
+Permissions: all-permissions;
+Codebase: http://172.22.8.119;
+};

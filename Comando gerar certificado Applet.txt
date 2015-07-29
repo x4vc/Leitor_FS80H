@@ -1,0 +1,11 @@
+Comandos gerar certificado java:
+Ir para local de instalação do java: cd C:\Program Files\Java\jdk1.7.0_65\bin
+
+Gerar Certificado: keytool -genkeypair -alias alias -keyalg EC -keysize 571 -keystore keystore.jks
+senha: trans@2009
+
+Assina .JAR: jarsigner -keystore C:\Users\victorcmaf\keystore.jks C:\Users\victorcmaf\Documents\NetBeansProjects\AppletDigital\dist\biometria_2.jar alias
+
+exemplo: jarsigner -keystore C:\Users\victorcmaf\keystore.jks C:\Users\victorcmaf\Documents\NetBeansProjects\AppletDigital\dist\biometria_2.jar alias
+
+exemplo2: jarsigner -keystore C:\Users\victorcmaf\keystore.jks C:\Repository\Servidor_local_X4VC\Leitor_biometrico\AppletDigital\dist\biometria_2.jar alias
