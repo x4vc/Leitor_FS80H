@@ -98,9 +98,16 @@ public class Conexao {
                 //this.closeConnection();
                 this.openConnection();
             } else {
+//                PreparedStatement pstmt = connection
+//                        .prepareStatement("SELECT id_funcionario AS ID_FUNCIONARIO,CONVERT(VARCHAR(8000),digital) AS BYTES_DIGITAL,"
+//                                + "qualidade_digital AS QUALIDADE_DIGITAL FROM tb_digital");
+                
+                //Data moficação: 28/08/2015
+                //Descrição da mudança: Alterar Query para selecionar só os usuários Ativos
                 PreparedStatement pstmt = connection
-                        .prepareStatement("SELECT id_funcionario AS ID_FUNCIONARIO,CONVERT(VARCHAR(8000),digital) AS BYTES_DIGITAL,"
-                                + "qualidade_digital AS QUALIDADE_DIGITAL FROM tb_digital");
+                        .prepareStatement("SELECT d.id_funcionario AS ID_FUNCIONARIO,CONVERT(VARCHAR(8000),d.digital) AS BYTES_DIGITAL,"
+                                + "d.qualidade_digital AS QUALIDADE_DIGITAL FROM tb_digital d "
+                                + "JOIN tb_pessoal p on d.id_funcionario = p.id_pessoal where p.inativo = 0");
 
                 ResultSet rs = pstmt.executeQuery();
 
@@ -291,6 +298,7 @@ public class Conexao {
         return false;
 
     }
+
 public boolean isDiaCompensacao() {
         try {
             
