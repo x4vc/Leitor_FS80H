@@ -18,10 +18,10 @@ import javax.swing.JOptionPane;
 public class ConexaoSqlServer implements iConexao {
     private String server = "172.22.8.17";
     //  Base de dados Produção    
-    private String dataBase = "DB_ACESSO";
+    //private String dataBase = "DB_ACESSO";
     //--------------------------------------------------
     //  Base de dados Teste/Homologação
-    //private String dataBase = "DB_ACESSO_HOMOLOG";
+    private String dataBase = "DB_ACESSO_HOMOLOG";
     private String usuario = "acesso";
     private String senha = "#4c3ss0$";
     private final String driverName = "com.microsoft.sqlserver.jdbc.SQLServerDriver";

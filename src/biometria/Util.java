@@ -64,6 +64,8 @@ import com.griaule.grfingerjava.MatchingContext;
 import com.griaule.grfingerjava.Template;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.concurrent.TimeUnit;
+import javafx.scene.control.Alert;
 
 
 /**
@@ -645,214 +647,332 @@ public class Util implements IStatusEventListener, IImageEventListener, IFingerE
         }
 
         if (id_funcionario != -1 && comparacaoPolegar == true) {
-            boolean isJornadaNova = false; // getdate() não precisa compensar
             
-            System.out.println("Id funcionário que bateu com o código binario da digital = " + id_funcionario);
             Funcionario funcionario = conexao.BuscarFuncionarioPorId(id_funcionario);
-            //Jornada tipoJornadaFuncionario = conexao.buscarJornadaFuncionarioID(id_funcionario);
-            //Verificamos o tipo de jornada por Id do funcionário, se isJornadaNova == true então precisa compensar dia
-            Jornada tipoJornadaFuncionario = conexao.buscarJornadaFuncionarioID(id_funcionario, isJornadaNova);
-
-            boolean bloquearAcesso = conexao.BloquearAcesso(funcionario.getIdFuncionario());
-
-            ui.writeLog("BLOQUEIO: " + dateFormat.format(new Date()));
-
-            if (bloquearAcesso == true) {
-                try {
-                    //ui.writeLog("Acesso bloqueado: " + funcionario.getNome());
-                    ui.getAppletContext().showDocument(new URL("javascript:bloquearAcesso('" + funcionario.getNome() + "')"));
-                } catch (MalformedURLException e) {
-                    e.printStackTrace();
-                }
-
-            } else {
-                Acesso acesso = null;
-                
-                //Verificamos se a data é para compensação
-                boolean diaCompensacao = conexao.isDiaCompensacao();
-                if(true == diaCompensacao){
-                    int nSize = 0;
-                    int nCount = 0;
-                    Date dataReferencia;
-                    int idTipoCompensacao;
-                    int idSetor;
-                    int idPessoal;
-                    boolean isAfastado = false;
-                    
-                    boolean isSetor = false;
-                    
-                    boolean isLoop = true;
-                    boolean isLoop2 = true;
-                    
-                    //Verificamos quantidade de registros que devem ser compensados no dia
-                    ArrayList<Compensacao> compensacao = conexao.SetearCompensacao();
-                    
-                    nSize = compensacao.size();   
-                    System.out.println("Quantidade de compensações achadas no banco baseado no getdate():" + nSize);
-                    if (nSize == 1 ){
-                        idTipoCompensacao=compensacao.get(0).getIdTipoCompensacao();
-                        dataReferencia = compensacao.get(0).getDataReferencia();
-                        idSetor = compensacao.get(0).getIdSetor();
-                        idPessoal = compensacao.get(0).getIdPessoal();
-                        
-                        //Verificamos se funcionário possui afastamento legal na data de referencia
-                        isAfastado = conexao.isAfastadoLegal(id_funcionario, dataReferencia) ;
-                        System.out.println("Id Tipo compensação (nSize == 1) = " + idTipoCompensacao);
-                        if (false == isAfastado){
-                            switch(idTipoCompensacao){
-                                case 1: //Todos
-                                    // verificamos o valor a ser utilizado na jornada
-                                    isJornadaNova = true;
-                                    break;
-                                case 2: //Funcionario
-                                    //verificamos se realmente é o funcionário 
-                                    // que deve compensar conforme dados da tabela tb_compensacao                                   
-                                    if(id_funcionario == idPessoal){
-                                        isJornadaNova = true;
-                                    } else {
-                                        isJornadaNova = false;
-                                    }                                    
-                                    break;
-                                case 3: //Setor
-                                    //verificamos se o funcionário faz parte do setor que deve compensar.                                    
-                                    isSetor = conexao.isSetor(id_funcionario, idSetor);
-                                    if(true == isSetor){
-                                        isJornadaNova = true;
-                                    } else {
-                                        isJornadaNova = false;
-                                    }
-                                    break;
-                                default:
-                                    break;
-                            }
-                        }
-                        
-                    } else { // nSize > 1
-                        System.out.println("Entrou no else quando nSize > 1");
-                        try {
-                            do {
-                                System.out.println("nCount = " + nCount);
-                                idTipoCompensacao=compensacao.get(nCount).getIdTipoCompensacao();
-                                dataReferencia = compensacao.get(nCount).getDataReferencia();
-                                idSetor = compensacao.get(nCount).getIdSetor();
-                                idPessoal = compensacao.get(nCount).getIdPessoal();
-
-                                //Verificamos se funcionário possui afastamento legal na data de referencia
-                                isAfastado = conexao.isAfastadoLegal(id_funcionario, dataReferencia) ;
-                                System.out.println("Id Tipo compensação (nSize > 1) = " + idTipoCompensacao);
-                                if (false == isAfastado){
-                                    switch(idTipoCompensacao){
-                                        case 1: //Todos
-                                            // verificamos o valor a ser utilizado na jornada
-                                            isJornadaNova = true;
-                                            isLoop = false;
-                                            break;
-                                        case 2: //Funcionario
-                                            //verificamos se realmente é o funcionário 
-                                            // que deve compensar conforme dados da tabela tb_compensacao                                   
-                                            if(id_funcionario == idPessoal){
-                                                isJornadaNova = true;
-                                                isLoop = false;
-                                            } else {
-                                                isJornadaNova = false;
-                                                isLoop = true;
-                                            }                                    
-                                            break;
-                                        case 3: //Setor
-                                            //verificamos se o funcionário faz parte do setor que deve compensar.                                    
-                                            isSetor = conexao.isSetor(id_funcionario, idSetor);
-                                            if(true == isSetor){
-                                                isJornadaNova = true;
-                                                isLoop = false;
-                                            } else {
-                                                isJornadaNova = false;
-                                                isLoop = true;
-                                            }
-                                            break;
-                                        default:
-                                            break;
-                                    }
-                                }
-                                System.out.println("isLoop(" + nCount +") = " + isLoop);
-                                
-                                //nCount++;
-                                if(true == isLoop){
-                                    nCount++;
-                                    System.out.println("nCount = " + nCount);
-                                } else {
-                                    nCount = nSize;
-                                    System.out.println("nCount = " + nCount + " = nSize = " + nCount);
-                                }                                 
-                                
-                                
-                            } while (nCount<nSize); //while (isLoop||(nCount<nSize)); //while (nCount<nSize);
-                        } catch(Exception e) {
-                            e.printStackTrace();
-                            return;
-                        }
-                    }
-                    
-                } else { // getdate() Data de hoje não precisa compensar
-                    isJornadaNova = false;                    
-                }
-                /*if (tipoJornadaFuncionario.getTipoJornada().equalsIgnoreCase("e")) {
-                    
-
-                 }else {*/
-                System.out.println("isJornadaNova = " + isJornadaNova);
-                System.out.println("Verifica se funcionário esta afastado");
-                if (this.isAfastada(id_funcionario)) {
-                    try {                        
-                        ui.getAppletContext().showDocument(new URL("javascript:showAfastamentoLegal('" + funcionario.getNome() + "')"));
-                    } catch (MalformedURLException ex) {
-                        Logger.getLogger(Util.class.getName()).log(Level.SEVERE, null, ex);
-                    }
-                } else if (conexao.limiteDiarioAtingido(funcionario.getIdFuncionario(), isJornadaNova)) {
+            System.out.println("Funcionário: " + id_funcionario + " - " + funcionario.getNome());
+            Acesso acesso = null;
+            
+            //Código para Operação Especial
+            boolean bOperacaoEspecial = false;
+            //Valores da variavel isOperacao
+            // 0 ==> Não faz operação especial
+            // 1 ==> Faz operação especial e pode apontar hora
+            // 2 ==> Faz operação especial porém ainda não pode apontar hora porque está fora do horário (+- 30 min)
+            int nSegundos = 3 ; //sistema entra num "delay" por n segundos
+            int isOperacao = 0;
+            isOperacao = conexao.isDiaOperacaoEspecial(id_funcionario);
+            
+            switch(isOperacao){
+                case 0: //Não faz operação especial
+                    bOperacaoEspecial = false;
+                    break;
+                case 1: //Faz operação especial e pode apontar hora
+                    bOperacaoEspecial = true;
+                    break;
+                case 2: //Faz operação especial porém ainda não pode apontar hora porque está fora do horário (+- 30 min)
+                    bOperacaoEspecial = false;
                     try {
-                        System.out.println("Entrei no limite diário atingido!");
-                        //ui.writeLog("LIMITE DIARIO ATINGINDO.");
-                        ui.getAppletContext().showDocument(new URL("javascript:showLimiteDiarioAtingido('" + funcionario.getNome() + "')"));
-                    } catch (MalformedURLException e) {
+                        ui.getAppletContext().showDocument(new URL("javascript:showForaJornadaOperacaoEspecial()"));
+                        try {
+                            TimeUnit.SECONDS.sleep(nSegundos);
+                        }catch (InterruptedException e){                            
+                            }
+                    }catch (MalformedURLException e) {
                         e.printStackTrace();
                     }
-                } else if (conexao.isForaJornada(funcionario.getIdFuncionario(), isJornadaNova)) {
+                    break;
+                default:
+                    bOperacaoEspecial = false;
+                    break;
+            }
+                   
+            
+            if (bOperacaoEspecial){                
+                
+                int nQtdeApontamentos = 0;
+                String nomeTipoAcesso = "";
+                
+                System.out.println("Entrei no Operacao Especial!");
+                System.out.println("Operacao Especial = " + isOperacao); 
+                        
+                //Calculamos quantidade de apontamentos registrados na data getdate()
+                nQtdeApontamentos = conexao.buscarAcessosDiaFuncionarioOperacaoEspecial(id_funcionario);
+                System.out.println("Qtde de apontamentos encontrados para Operação Especial = " + nQtdeApontamentos );
+                
+                //Salvar apontamento da Operação Especial
+                switch(nQtdeApontamentos){
+                    case 0: //Não fez apontamento ainda                        
+                        nomeTipoAcesso = "E1";
+                        acesso = conexao.registrarAcessoOperacaoEspecial(funcionario, nomeTipoAcesso);
+                        try {
+                            ui.getAppletContext().showDocument(new URL("javascript:showInformacoesAcesso('" + acesso.getFuncionario().getNome() + "','" + acesso.getDescricaoSituacao() + "')"));
+                            try {
+                                TimeUnit.SECONDS.sleep(nSegundos);
+                            }catch (InterruptedException e){                            
+                                }
+                        }catch (MalformedURLException e) {
+                            e.printStackTrace();
+                        }
+                        break;
+                    case 1: //Fez apontamento de E1
+                        nomeTipoAcesso = "S1";
+                        acesso = conexao.registrarAcessoOperacaoEspecial(funcionario, nomeTipoAcesso);
+                        try {
+                            ui.getAppletContext().showDocument(new URL("javascript:showInformacoesAcesso('" + acesso.getFuncionario().getNome() + "','" + acesso.getDescricaoSituacao() + "')"));
+                            try {
+                                TimeUnit.SECONDS.sleep(nSegundos);
+                            }catch (InterruptedException e){                            
+                                }
+                        }catch (MalformedURLException e) {
+                            e.printStackTrace();
+                        }
+                        break;
+                    case 2: //Fez apontamento E1 e S1 (não pode apontar mais)                        
+                        try {                                                  
+                            ui.getAppletContext().showDocument(new URL("javascript:showLimiteDiarioAtingido('" + funcionario.getNome() + "')"));
+                            try {
+                                TimeUnit.SECONDS.sleep(nSegundos);
+                            }catch (InterruptedException e){                            
+                                }
+                        }catch (MalformedURLException e) {
+                            e.printStackTrace();
+                        }
+                        break;
+                    default:
+                        break;
+                } 
+//                Alert alert = new Alert(Alert.AlertType.INFORMATION);
+//                alert.setTitle("Operação Especial");
+//                alert.setHeaderText("isOperaao");
+//                alert.setContentText("Valor = False");
+//                alert.showAndWait();
+            }
+            else {
+                System.out.println("Operacao Especial = " + isOperacao);
+//                Alert alert = new Alert(Alert.AlertType.INFORMATION);
+//                alert.setTitle("Operação Especial");
+//                alert.setHeaderText("isOperaao");
+//                alert.setContentText("Valor = False");
+//                alert.showAndWait();
+                //Código para compensação e apontamento Normal
+            //}
+            
+            
+                boolean isJornadaNova = false; // getdate() não precisa compensar
+
+                System.out.println("Id funcionário que bateu com o código binario da digital = " + id_funcionario);
+                //Funcionario funcionario = conexao.BuscarFuncionarioPorId(id_funcionario);
+
+                //Jornada tipoJornadaFuncionario = conexao.buscarJornadaFuncionarioID(id_funcionario);
+                //Verificamos o tipo de jornada por Id do funcionário, se isJornadaNova == true então precisa compensar dia
+                Jornada tipoJornadaFuncionario = conexao.buscarJornadaFuncionarioID(id_funcionario, isJornadaNova);
+
+                boolean bloquearAcesso = conexao.BloquearAcesso(funcionario.getIdFuncionario());
+
+                ui.writeLog("BLOQUEIO: " + dateFormat.format(new Date()));
+
+                if (bloquearAcesso == true) {
                     try {
-                        System.out.println("Entrei na validação de fora da jornada!");
-                        //ui.writeLog("LIMITE DIARIO ATINGINDO.");
-                        ui.getAppletContext().showDocument(new URL("javascript:showForaJornada()"));
+                        //ui.writeLog("Acesso bloqueado: " + funcionario.getNome());
+                        ui.getAppletContext().showDocument(new URL("javascript:bloquearAcesso('" + funcionario.getNome() + "')"));
                     } catch (MalformedURLException e) {
                         e.printStackTrace();
                     }
 
                 } else {
-                    try {
-                        
-                        System.out.println("Registrei o acesso!");
-                        ui.writeLog("ACESSO: " + dateFormat.format(new Date()));
-                        acesso = conexao.registrarAcesso(funcionario, isJornadaNova);
-                        ui.writeLog("ACESSO REGISTRADO: " + dateFormat.format(new Date()));
-                    } catch (Exception e) {
-                        e.printStackTrace();
-                        return;
-                    }
+//                    alert = new Alert(Alert.AlertType.INFORMATION);
+//                    alert.setTitle("Operação Especial");
+//                    alert.setHeaderText("isOperaao");
+//                    alert.setContentText("Valor = False");
+//                    alert.showAndWait();
+                    //Acesso acesso = null;
+                    acesso = null;
 
-                    try {
-                        if (acesso.isAtrasado() == false) //ui.writeLog("Nao atrasado: " + acesso.getFuncionario().getNome());
-                        {
-                            ui.getAppletContext().showDocument(new URL("javascript:showInformacoesAcesso('" + acesso.getFuncionario().getNome() + "','" + acesso.getDescricaoSituacao() + "')"));
-                        } else //ui.writeLog("Atrasado");
-                        {
-                            ui.getAppletContext().showDocument(new URL("javascript:showInformacoesAcessoAtrasado('" + acesso.getFuncionario().getNome() + "','" + acesso.getDescricaoSituacao() + "')"));
+                    //Verificamos se a data é para compensação
+                    boolean diaCompensacao = conexao.isDiaCompensacao();
+                    
+                    if(true == diaCompensacao){
+                        int nSize = 0;
+                        int nCount = 0;
+                        Date dataReferencia;
+                        int idTipoCompensacao;
+                        int idSetor;
+                        int idPessoal;
+                        boolean isAfastado = false;
+
+                        boolean isSetor = false;
+
+                        boolean isLoop = true;
+                        boolean isLoop2 = true;
+
+                        //Verificamos quantidade de registros que devem ser compensados no dia
+                        ArrayList<Compensacao> compensacao = conexao.SetearCompensacao();
+
+                        nSize = compensacao.size();   
+                        System.out.println("Quantidade de compensações achadas no banco baseado no getdate():" + nSize);
+                        if (nSize == 1 ){
+                            idTipoCompensacao=compensacao.get(0).getIdTipoCompensacao();
+                            dataReferencia = compensacao.get(0).getDataReferencia();
+                            idSetor = compensacao.get(0).getIdSetor();
+                            idPessoal = compensacao.get(0).getIdPessoal();
+
+                            //Verificamos se funcionário possui afastamento legal na data de referencia
+                            isAfastado = conexao.isAfastadoLegal(id_funcionario, dataReferencia) ;
+                            System.out.println("Id Tipo compensação (nSize == 1) = " + idTipoCompensacao);
+                            if (false == isAfastado){
+                                switch(idTipoCompensacao){
+                                    case 1: //Todos
+                                        // verificamos o valor a ser utilizado na jornada
+                                        isJornadaNova = true;
+                                        break;
+                                    case 2: //Funcionario
+                                        //verificamos se realmente é o funcionário 
+                                        // que deve compensar conforme dados da tabela tb_compensacao                                   
+                                        if(id_funcionario == idPessoal){
+                                            isJornadaNova = true;
+                                        } else {
+                                            isJornadaNova = false;
+                                        }                                    
+                                        break;
+                                    case 3: //Setor
+                                        //verificamos se o funcionário faz parte do setor que deve compensar.                                    
+                                        isSetor = conexao.isSetor(id_funcionario, idSetor);
+                                        if(true == isSetor){
+                                            isJornadaNova = true;
+                                        } else {
+                                            isJornadaNova = false;
+                                        }
+                                        break;
+                                    default:
+                                        break;
+                                }
+                            }
+
+                        } else { // nSize > 1
+                            System.out.println("Entrou no else quando nSize > 1");
+                            try {
+                                do {
+                                    System.out.println("nCount = " + nCount);
+                                    idTipoCompensacao=compensacao.get(nCount).getIdTipoCompensacao();
+                                    dataReferencia = compensacao.get(nCount).getDataReferencia();
+                                    idSetor = compensacao.get(nCount).getIdSetor();
+                                    idPessoal = compensacao.get(nCount).getIdPessoal();
+
+                                    //Verificamos se funcionário possui afastamento legal na data de referencia
+                                    isAfastado = conexao.isAfastadoLegal(id_funcionario, dataReferencia) ;
+                                    System.out.println("Id Tipo compensação (nSize > 1) = " + idTipoCompensacao);
+                                    if (false == isAfastado){
+                                        switch(idTipoCompensacao){
+                                            case 1: //Todos
+                                                // verificamos o valor a ser utilizado na jornada
+                                                isJornadaNova = true;
+                                                isLoop = false;
+                                                break;
+                                            case 2: //Funcionario
+                                                //verificamos se realmente é o funcionário 
+                                                // que deve compensar conforme dados da tabela tb_compensacao                                   
+                                                if(id_funcionario == idPessoal){
+                                                    isJornadaNova = true;
+                                                    isLoop = false;
+                                                } else {
+                                                    isJornadaNova = false;
+                                                    isLoop = true;
+                                                }                                    
+                                                break;
+                                            case 3: //Setor
+                                                //verificamos se o funcionário faz parte do setor que deve compensar.                                    
+                                                isSetor = conexao.isSetor(id_funcionario, idSetor);
+                                                if(true == isSetor){
+                                                    isJornadaNova = true;
+                                                    isLoop = false;
+                                                } else {
+                                                    isJornadaNova = false;
+                                                    isLoop = true;
+                                                }
+                                                break;
+                                            default:
+                                                break;
+                                        }
+                                    }
+                                    System.out.println("isLoop(" + nCount +") = " + isLoop);
+
+                                    //nCount++;
+                                    if(true == isLoop){
+                                        nCount++;
+                                        System.out.println("nCount = " + nCount);
+                                    } else {
+                                        nCount = nSize;
+                                        System.out.println("nCount = " + nCount + " = nSize = " + nCount);
+                                    }                                 
+
+
+                                } while (nCount<nSize); //while (isLoop||(nCount<nSize)); //while (nCount<nSize);
+                            } catch(Exception e) {
+                                e.printStackTrace();
+                                return;
+                            }
                         }
 
-                    } catch (MalformedURLException e) {
-                        e.printStackTrace();
+                    } else { // getdate() Data de hoje não precisa compensar
+                        isJornadaNova = false;                    
                     }
-                }
+                    
+                    System.out.println("isJornadaNova = " + isJornadaNova);
+                    System.out.println("Verifica se funcionário esta afastado");
+                    if (this.isAfastada(id_funcionario)) {
+                        try {                        
+                            ui.getAppletContext().showDocument(new URL("javascript:showAfastamentoLegal('" + funcionario.getNome() + "')"));
+                        } catch (MalformedURLException ex) {
+                            Logger.getLogger(Util.class.getName()).log(Level.SEVERE, null, ex);
+                        }
+                    } else if (conexao.limiteDiarioAtingido(funcionario.getIdFuncionario(), isJornadaNova)) {
+                        try {
+                            System.out.println("Entrei no limite diário atingido!");
+                            //ui.writeLog("LIMITE DIARIO ATINGINDO.");
+                            ui.getAppletContext().showDocument(new URL("javascript:showLimiteDiarioAtingido('" + funcionario.getNome() + "')"));
+                        } catch (MalformedURLException e) {
+                            e.printStackTrace();
+                        }
+                    } else if (conexao.isForaJornada(funcionario.getIdFuncionario(), isJornadaNova)) {
+                        try {
+                            System.out.println("Entrei na validação de fora da jornada!");
+                            //ui.writeLog("LIMITE DIARIO ATINGINDO.");
+                            ui.getAppletContext().showDocument(new URL("javascript:showForaJornada()"));
+                        } catch (MalformedURLException e) {
+                            e.printStackTrace();
+                        }
 
-                //}
+                    } else {
+                        try {
+
+                            System.out.println("Registrei o acesso!");
+                            ui.writeLog("ACESSO: " + dateFormat.format(new Date()));
+                            acesso = conexao.registrarAcesso(funcionario, isJornadaNova);
+                            ui.writeLog("ACESSO REGISTRADO: " + dateFormat.format(new Date()));
+                        } catch (Exception e) {
+                            e.printStackTrace();
+                            return;
+                        }
+
+                        try {
+                            if (acesso.isAtrasado() == false) //ui.writeLog("Nao atrasado: " + acesso.getFuncionario().getNome());
+                            {
+                                ui.getAppletContext().showDocument(new URL("javascript:showInformacoesAcesso('" + acesso.getFuncionario().getNome() + "','" + acesso.getDescricaoSituacao() + "')"));
+                            } else //ui.writeLog("Atrasado");
+                            {
+                                ui.getAppletContext().showDocument(new URL("javascript:showInformacoesAcessoAtrasado('" + acesso.getFuncionario().getNome() + "','" + acesso.getDescricaoSituacao() + "')"));
+                            }
+
+                        } catch (MalformedURLException e) {
+                            e.printStackTrace();
+                        }
+                    }
+
+                    //}
+                }
             }
-        } else {
+        }
+        else {
             try {
                 //ui.writeLog("Nao identificado");
                 ui.getAppletContext().showDocument(new URL("javascript:funcionarioNaoEncontrado()"));
@@ -860,16 +980,9 @@ public class Util implements IStatusEventListener, IImageEventListener, IFingerE
                 e.printStackTrace();
             }
         }
-        /*}else
-         {
-         try {
-         //ui.writeLog(configuracaoHorario.ImprimirHorarioDisponivelEntrada());
-         ui.getAppletContext().showDocument(new URL("javascript:horarioIndisponivelAcesso('" + configuracaoHorario.ImprimirHorarioDisponivelEntrada() + "')"));
-         } catch (MalformedURLException e) {
-         e.printStackTrace();
-         }
-         }*/
+            
     }
+
 
     public boolean isAfastada(int id_funcionario) {
         boolean resultado = false;

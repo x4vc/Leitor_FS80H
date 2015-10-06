@@ -2,7 +2,6 @@ package biometria;
 
 import Modelo.AfastamentoLegal;
 import Modelo.Ponto;
-import com.microsoft.sqlserver.jdbc.SQLServerException;
 import java.net.InetAddress;
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -16,6 +15,7 @@ import java.util.Calendar;
 
 import java.util.Date;
 import java.util.Iterator;
+import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.swing.JOptionPane;
@@ -298,28 +298,166 @@ public class Conexao {
         return false;
 
     }
+public int isDiaOperacaoEspecial(int id_funcionario) {
+    
+    try {
+        //PreparedStatement pstmt = connection.prepareStatement("select id_calendario from tb_calendario where CONVERT(VARCHAR(12),datainicio,103) <= CONVERT(VARCHAR(12),GETDATE(),103) and CONVERT(VARCHAR(12),datafim,103) >= CONVERT(VARCHAR(12),GETDATE(),103) and ativo = 1");
+        PreparedStatement pstmt = connection.prepareStatement("select oe.*, oep.id_pessoal from tb_operacao_especial oe \n" +
+                "join tb_operacao_especial_pessoal oep on oe.id = oep.id_operacao_especial \n" +
+                "where CONVERT(VARCHAR(12),oe.data_hora_ini,103) <= CONVERT(VARCHAR(12),GETDATE(),103) \n" + 
+                "AND CONVERT(VARCHAR(12),oe.data_hora_fim,103) >= CONVERT(VARCHAR(12),GETDATE(),103) AND oe.ativo = 1 AND oe.aprovado = 1 \n" +
+                "AND oep.id_pessoal = ?");
+        
+        pstmt.setInt(1, id_funcionario);
+        System.out.println("Entrei no metodo isDiaOperacaoEspecial()");
+        ResultSet rs = pstmt.executeQuery();
+        System.out.println("Id Funcionário: " + id_funcionario);
+        System.out.println("rs = " + rs);
+        
+        
+//        if (rs == null){
+//            return 0; // 0 = Funcionário não está escalado para Operação Especial
+//        }
+
+        if (rs != null && rs.next()) {
+            DateFormat df = new SimpleDateFormat("dd/MM/yyyy");
+            DateFormat dfAtual = new SimpleDateFormat("dd/MM/yyyy HH:mm:ss");
+            java.sql.Date data_hora_ini, data_hora_fim;
+            java.util.Date data_hora_atual;
+            java.sql.Timestamp timeStamp_ini, timeStamp_fim; //timeStamp_ini_minus_30 = null, timeStamp_fim_plus_30 = null;
+            java.sql.Time time_ini;
+            
+            String strDataHoraIni; 
+            String strDataHoraFim;
+            
+            //System.out.println(strDataNow);
+            //get hora inicial e hora final
+            data_hora_atual = new Date();
+            
+            data_hora_ini = rs.getDate(4); //campo data_hora_ini
+            strDataHoraIni = df.format(data_hora_ini);
+            
+            timeStamp_ini = rs.getTimestamp(4);
+            timeStamp_fim = rs.getTimestamp(5);
+            
+            //timeStamp_ini_minus_30.setTime(timeStamp_ini.getTime() - TimeUnit.MINUTES.toMinutes(30));
+            //timeStamp_fim_plus_30 = rs.getTimestamp(5);
+            
+            time_ini = rs.getTime(4);            
+            data_hora_fim = rs.getDate(5); //campo data_hora_fim
+            strDataHoraFim = df.format(data_hora_fim);
+            
+            
+            
+            System.out.println(id_funcionario);
+            System.out.println("data_hora_ini = " + strDataHoraIni);
+            System.out.println("data_hora_fim = " + strDataHoraFim);
+            System.out.println("timeStamp_ini = " + timeStamp_ini);
+            System.out.println("timeStamp_fim = " + timeStamp_fim);
+            //System.out.println("timeStamp_ini_minus_30 = " + timeStamp_ini_minus_30);
+            System.out.println("time_ini = " + time_ini);
+            System.out.println("data_hora_atual = " + data_hora_atual + " - " + dfAtual.format(data_hora_atual));
+           /* 
+            if (timeStamp_ini.before(data_hora_atual))  {
+                System.out.println("timeStamp_ini.before = true");
+                
+            }
+            else {
+                System.out.println("timeStamp_ini.before = false");
+            }
+            
+            if (timeStamp_fim.after(data_hora_atual))  {
+                System.out.println("timeStamp_fim.after = true");
+                
+            }
+            else {
+                System.out.println("timeStamp_fim.after = false");
+            }
+            */
+            //Verificamos se data e horário está dentro do intervalo permitido
+            if ((timeStamp_ini.before(data_hora_atual))&& (timeStamp_fim.after(data_hora_atual))){
+                System.out.println(dfAtual.format(data_hora_atual) + " SIM Está dentro do intervalo permitido");
+                rs.close();
+                return 1; // 1 = SIM Está dentro do intervalo permitido
+            }
+            else {
+                System.out.println(dfAtual.format(data_hora_atual) + " NÃO Está dentro do intervalo permitido");
+                rs.close();
+                return 2; // 2 = NÃO Está dentro do intervalo permitido
+            }
+            
+            //rs.close();
+            //return true;
+        }
+//        else {
+//            return 0; // 0 = Funcionário não está escalado para Operação Especial 
+//        }
+        } catch (Exception e) {
+            showErro("isDiaOperacaoEspecial(): " + e.getMessage());
+            e.printStackTrace();
+            System.exit(1);
+        }
+        return 0; // 0 = Funcionário não está escalado para Operação Especial    
+}
 
 public boolean isDiaCompensacao() {
+
+        //PreparedStatement pstmt = connection.prepareStatement("select id_calendario from tb_calendario where CONVERT(VARCHAR(12),datainicio,103) <= CONVERT(VARCHAR(12),GETDATE(),103) and CONVERT(VARCHAR(12),datafim,103) >= CONVERT(VARCHAR(12),GETDATE(),103) and ativo = 1");
+        PreparedStatement pstmt;
+        ResultSet rs;
+        //verificamos se existe registros    
+
+        int nQtde = 0;
+        String query = "select count(*) AS qtde_registros from tb_compensacao c where  \n" +
+            "CONVERT(VARCHAR(12),c.data_ini,103) <= CONVERT(VARCHAR(12),GETDATE(),103) \n" +
+            "AND CONVERT(VARCHAR(12),c.data_fim,103) >= CONVERT(VARCHAR(12),GETDATE(),103) AND c.ativo = 1";
         try {
-            
-            //PreparedStatement pstmt = connection.prepareStatement("select id_calendario from tb_calendario where CONVERT(VARCHAR(12),datainicio,103) <= CONVERT(VARCHAR(12),GETDATE(),103) and CONVERT(VARCHAR(12),datafim,103) >= CONVERT(VARCHAR(12),GETDATE(),103) and ativo = 1");
-            PreparedStatement pstmt = connection.prepareStatement("select * from tb_compensacao where \n" +
-                    "CONVERT(VARCHAR(12),data_ini,102) <= CONVERT(VARCHAR(12),GETDATE(),102) \n" +
-                    "and CONVERT(VARCHAR(12),data_fim,102) >= CONVERT(VARCHAR(12),GETDATE(),102) AND ativo = 1");
+            pstmt = connection.prepareStatement(query);                
 
-            ResultSet rs = pstmt.executeQuery();
+            rs = pstmt.executeQuery();
 
-            if (rs != null && rs.next()) {
+            rs.next();
+            nQtde = rs.getInt("qtde_registros");
+            System.out.println("Qtde registros da tabela tb_compensacao = " + nQtde);
+            if (nQtde > 0) {
                 rs.close();
                 return true;
             }
-            } catch (Exception e) {
-                showErro("isDiaCompensacao(): " + e.getMessage());
-                e.printStackTrace();
-                System.exit(1);
+            else {
+                return false;
             }
-        return false;
-    }
+        }
+        catch (SQLException e) {
+            showErro("isDiaCompensacao(Qtde_Regsitros): " + e.getMessage());
+            e.printStackTrace();
+        }
+        //--------------------------------------
+//        try {
+//            if (nQtde > 0) {
+//                //rs.close();
+//                return true;
+////                    pstmt = connection.prepareStatement("select * from tb_compensacao where \n" +
+////                    "CONVERT(VARCHAR(12),data_ini,103) <= CONVERT(VARCHAR(12),GETDATE(),103) \n" +
+////                    "and CONVERT(VARCHAR(12),data_fim,103) >= CONVERT(VARCHAR(12),GETDATE(),103) AND ativo = 1");
+////
+////                    ResultSet rs = pstmt.executeQuery();
+////
+////                    if (rs != null && rs.next()) {
+////                        rs.close();
+////                        return true;
+//                }
+//                else {                        
+//                    return false;
+//                }
+//            } 
+//        catch (Exception e) {
+//            showErro("isDiaCompensacao(): " + e.getMessage());
+//            e.printStackTrace();
+//            System.exit(1);
+//            }
+//    }
+    return false;
+}
 
 public ArrayList<Compensacao> SetearCompensacao() {
         
@@ -461,13 +599,52 @@ public boolean isSetor(int idFuncionario, int idSetor) {
 
         return funcionario;
     }
-
+    public Acesso registrarAcessoOperacaoEspecial(Funcionario funcionario, String nomeTipoAcesso) {
+        
+        Acesso acesso = new Acesso();
+        if ("S1"==nomeTipoAcesso){ 
+            acesso.setFuncionario(funcionario);
+            acesso.setPrimeiroAcesso(false);
+            acesso.setEntrada(false);
+            acesso.setAtrasado(false);
+        } 
+        if ("E1"==nomeTipoAcesso){             
+            acesso.setFuncionario(funcionario);
+            acesso.setPrimeiroAcesso(true);
+            acesso.setEntrada(true);
+            acesso.setAtrasado(false);
+        }
+        
+        PreparedStatement pstmt;
+        int IdFuncionario, IdSetor, nModelo;
+        nModelo = 0; //0 ==> sem modelo (PARA NÃO PREENCHER VALOR = NULL)
+        IdFuncionario = funcionario.getIdFuncionario();
+        IdSetor = funcionario.getIdSetor();
+        try {
+            String insert = "INSERT INTO tb_acesso_operacao_especial (id_pessoal,id_setor,status,datahora, ip_ponto, id_modelo) VALUES (?,?,?,GETDATE(),?,?)";
+            pstmt = connection.prepareStatement(insert);
+            pstmt.setInt(1, IdFuncionario);
+            pstmt.setInt(2, IdSetor);
+            pstmt.setString(3, nomeTipoAcesso);
+            pstmt.setString(4, InetAddress.getLocalHost().getHostAddress());
+            pstmt.setInt(5, nModelo);
+            pstmt.executeUpdate();
+            
+        }
+        catch (Exception e) {
+            showErro("RegistrarAcessoOperacaoEspecial(int id_funcionario): " + e.getMessage());            
+            //e.printStackTrace();
+            //System.exit(1);
+        }
+        return acesso;
+    }
     public Acesso registrarAcesso(Funcionario funcionario, boolean isJornadaNova) {
         //to do - Verificar ponto intra-jornadas 
 
         System.out.println("Conexao: Entrei no Registrar Acesso!");
         Acesso acesso = new Acesso();
         PreparedStatement pstmt;
+        String jornadaDiaria = "";
         try {
             Jornada jornadaFuncionario = this.buscarJornadaFuncionarioID(funcionario.getIdFuncionario(), isJornadaNova);
 
@@ -483,14 +660,19 @@ public boolean isSetor(int idFuncionario, int idSetor) {
             pstmt.setInt(2, acesso.getFuncionario().getIdSetor());
             pstmt.setString(4, InetAddress.getLocalHost().getHostAddress());
             pstmt.setInt(5, jornadaFuncionario.getId());
+            
+            jornadaDiaria = jornadaFuncionario.getTipoJornada();
+            jornadaDiaria = jornadaDiaria.trim();
 
             Calendar horaAtual = Calendar.getInstance();
-            if (jornadaFuncionario.getTipoJornada().equalsIgnoreCase("N")) {
+            //if (jornadaFuncionario.getTipoJornada().equalsIgnoreCase("N")) {
+            if (jornadaDiaria.equalsIgnoreCase("N")) {
                 System.out.println("registrarAcesso: Entrei no jornada de plantão noturno");
 
             }
 
-            if (jornadaFuncionario.getTipoJornada().equals("8")) {
+            //if (jornadaFuncionario.getTipoJornada().equals("8")) {
+            if (jornadaDiaria.equals("8")) {
                 System.out.println("registrarAcesso: Entrei na Jornada de 8 horas");
                 Calendar limiteVoltaAlmoco = jornadaFuncionario.convertStringCalendar(jornadaFuncionario.getHorarios().get(2));
                 limiteVoltaAlmoco.add(Calendar.MINUTE, 60);
@@ -619,7 +801,8 @@ public boolean isSetor(int idFuncionario, int idSetor) {
                 }
 
                 //Para jornadas de 4 e 6 horas    
-            } else if (!jornadaFuncionario.getTipoJornada().equals("E") && !jornadaFuncionario.getTipoJornada().equals("L")) {
+            } //else if (!jornadaFuncionario.getTipoJornada().equals("E") && !jornadaFuncionario.getTipoJornada().equals("L")) {
+                else if (!jornadaDiaria.equals("E") && !jornadaDiaria.equals("L")) {
                 System.out.println("registrarAcesso: Entrei na Jornada de 4 e 6 horas");
                 if (pontos.isEmpty()) {
                     if (horaAtual.after(jornadaFuncionario.convertStringCalendar(jornadaFuncionario.getHorarios().get(1)))) {
@@ -733,25 +916,32 @@ public boolean isSetor(int idFuncionario, int idSetor) {
             Calendar horaPermitidaPonto = Calendar.getInstance();
             Calendar horaAtual = Calendar.getInstance();
             Date hora = new Date();
-            if (jornadaFuncionario.getTipoJornada().equalsIgnoreCase("L")) {
+            String jornadaDiaria="";
+            jornadaDiaria = jornadaFuncionario.getTipoJornada();
+            jornadaDiaria = jornadaDiaria.trim();
+            //(jornadaFuncionario.getTipoJornada().equalsIgnoreCase("L")) {
+            if (jornadaDiaria.equalsIgnoreCase("L")) {
                 System.out.println("idForaJornada: false! Jornada Livre!");
                 return false;
 
             }
 
-            if ((!jornadaFuncionario.getTipoJornada().equalsIgnoreCase("E") || !jornadaFuncionario.getTipoJornada().equalsIgnoreCase("L")) && (horaAtual.get(Calendar.DAY_OF_WEEK) == 1 || horaAtual.get(Calendar.DAY_OF_WEEK) == 7) && !possuiHoraExtra(idFuncionario)) {
+            //if ((!jornadaFuncionario.getTipoJornada().equalsIgnoreCase("E") || !jornadaFuncionario.getTipoJornada().equalsIgnoreCase("L")) && (horaAtual.get(Calendar.DAY_OF_WEEK) == 1 || horaAtual.get(Calendar.DAY_OF_WEEK) == 7) && !possuiHoraExtra(idFuncionario)) {
+            if ((!jornadaDiaria.equalsIgnoreCase("E") || !jornadaDiaria.equalsIgnoreCase("L")) && (horaAtual.get(Calendar.DAY_OF_WEEK) == 1 || horaAtual.get(Calendar.DAY_OF_WEEK) == 7) && !possuiHoraExtra(idFuncionario)) {
                 //Final de Semana
                 System.out.println("Bloqueio de Final de Semana");
                 return true;
             }
 
-            if (!jornadaFuncionario.getTipoJornada().equalsIgnoreCase("e") && (horaAtual.get(Calendar.DAY_OF_WEEK) != 1 || horaAtual.get(Calendar.DAY_OF_WEEK) != 7)) {
+            //if (!jornadaFuncionario.getTipoJornada().equalsIgnoreCase("e") && (horaAtual.get(Calendar.DAY_OF_WEEK) != 1 || horaAtual.get(Calendar.DAY_OF_WEEK) != 7)) {
+            if (!jornadaDiaria.equalsIgnoreCase("e") && (horaAtual.get(Calendar.DAY_OF_WEEK) != 1 || horaAtual.get(Calendar.DAY_OF_WEEK) != 7)) {
 
                 if (rs != null && rs.next()) {
                     qtdAcesso = rs.getInt("qtdAcesso");
                     System.out.println("Quantidade de Acesso: " + qtdAcesso);
 
-                    if (!jornadaFuncionario.getTipoJornada().equals("8")) {
+                    //if (!jornadaFuncionario.getTipoJornada().equals("8")) {
+                    if (!jornadaDiaria.equals("8")) {
                         //Pega o último horário de saída para jornadas que so bate 2 pontos
                         System.out.println("Entrei na Validação de Saída para quem so bate 2 pontos");
                         String horarioSaida = jornadaFuncionario.getHorarios().get(1);
@@ -924,7 +1114,8 @@ public boolean isSetor(int idFuncionario, int idSetor) {
                     }
 
                 }
-            } else if (!jornadaFuncionario.getTipoJornada().equals('e') && (horaAtual.get(Calendar.DAY_OF_WEEK) == 1 || horaAtual.get(Calendar.DAY_OF_WEEK) == 7)) {
+            } //else if (!jornadaFuncionario.getTipoJornada().equals('e') && (horaAtual.get(Calendar.DAY_OF_WEEK) == 1 || horaAtual.get(Calendar.DAY_OF_WEEK) == 7)) {
+              else if (!jornadaDiaria.equals('e') && (horaAtual.get(Calendar.DAY_OF_WEEK) == 1 || horaAtual.get(Calendar.DAY_OF_WEEK) == 7)) {
                 System.out.println("Bloqueio de Fim de Semana");
                 return true;
             } else {
@@ -961,7 +1152,11 @@ public boolean isSetor(int idFuncionario, int idSetor) {
              ResultSet rs = pstmt.executeQuery();*/
             //if (rs != null && rs.next()) {
             Jornada jornadaFuncionario = this.buscarJornadaFuncionarioID(id_funcionario, isJornadaNova);
-            if (!jornadaFuncionario.getTipoJornada().equals("8") && !jornadaFuncionario.getTipoJornada().equals("L")) {
+            String jornadaDiaria="";
+            jornadaDiaria = jornadaFuncionario.getTipoJornada();
+            jornadaDiaria = jornadaDiaria.trim();
+            //if (!jornadaFuncionario.getTipoJornada().equals("8") && !jornadaFuncionario.getTipoJornada().equals("L")) {
+            if (!jornadaDiaria.equals("8") && !jornadaDiaria.equals("L")) {
                 while (i.hasNext()) {
                     Ponto p = (Ponto) i.next();
                     if (p.getTipo().equalsIgnoreCase("S1")) {
@@ -1005,9 +1200,9 @@ public boolean isSetor(int idFuncionario, int idSetor) {
             //Dados do servidor de homologação Afrodite
             String server = "172.22.8.17";
             //Database Produção
-            String dataBase = "DB_ACESSO";
+            //String dataBase = "DB_ACESSO";
             //Database Teste/Homologação
-            //String dataBase = "DB_ACESSO_HOMOLOG";
+            String dataBase = "DB_ACESSO_HOMOLOG";
             System.out.println("Connectado com o: " + dataBase);
             String usuario = "acesso";
             String senha = "#4c3ss0$";
@@ -1045,6 +1240,7 @@ public boolean isSetor(int idFuncionario, int idSetor) {
 
             if (rs != null && rs.next()) {
                 String jornadaDiaria = rs.getString("jornada");
+                jornadaDiaria = jornadaDiaria.trim();
                 if (jornadaDiaria.equals("8")) {
                     jornada = new Jornada(jornadaDiaria);
                     jornada.setId(idJornada);
@@ -1100,6 +1296,7 @@ public boolean isSetor(int idFuncionario, int idSetor) {
                 if (rs != null && rs.next()) {
                     String jornadaDiaria = rs.getString("jornada");
                     System.out.println("jornada = " + jornadaDiaria);
+                    jornadaDiaria = jornadaDiaria.trim();
                     if (jornadaDiaria.equals("8")) {
                         jornada = new Jornada(jornadaDiaria);
                         jornada.getHorarios().add(0, rs.getString("entrada1"));
@@ -1221,6 +1418,39 @@ public boolean isSetor(int idFuncionario, int idSetor) {
 
     }
 
+    int buscarAcessosDiaFuncionarioOperacaoEspecial(int idFuncionario) {
+        int nQtde = 0;
+        String query = "select count(*) AS qtde_registros from tb_acesso_operacao_especial where id_pessoal = ? and  convert(varchar(30),datahora,102) = convert(varchar(30),getdate(),102)";
+        try {
+            PreparedStatement pstmt = connection.prepareStatement(query);
+            pstmt.setInt(1, idFuncionario);
+
+            ResultSet rs = pstmt.executeQuery();
+            
+            rs.next();
+            nQtde = rs.getInt("qtde_registros");
+
+//            while (rs != null && rs.next()) {
+//                nQtde = rs.getInt("rowcount");
+//                Ponto ponto = new Ponto();
+//
+//                ponto.setHorarioRegistro(rs.getDate("datahora"));
+//                ponto.setTipo(rs.getString("status"));
+//                ponto.setId(rs.getInt("id_acesso"));
+//                acessosDiarios.add(ponto);
+//                System.out.println("buscarAcessosDiaFuncionario - Encontrei um ponto : " + ponto.getTipo());
+//
+            }
+
+        catch (SQLException e) {
+            showErro("getAcessosFuncionarioOperacaoEspecial(int id_funcionario): " + e.getMessage());
+            e.printStackTrace();
+
+        }
+        
+        
+        return nQtde;
+    }
     
     public ArrayList<Ponto> buscarAcessosDiaFuncionario(int idFuncionario, boolean isJornadaNova) {
 
@@ -1228,7 +1458,11 @@ public boolean isSetor(int idFuncionario, int idSetor) {
 
         ArrayList<Ponto> acessosDiarios = new ArrayList<>();
         Jornada jornadaFuncionario = this.buscarJornadaFuncionarioID(idFuncionario, isJornadaNova);
-        if (jornadaFuncionario.getTipoJornada().equalsIgnoreCase("N")) {
+        String jornadaDiaria = "";
+        jornadaDiaria = jornadaFuncionario.getTipoJornada();
+        jornadaDiaria = jornadaDiaria.trim();
+        //if (jornadaFuncionario.getTipoJornada().equalsIgnoreCase("N")) {
+        if (jornadaDiaria.equalsIgnoreCase("N")) {
             System.out.println("buscarAcessoDiaFuncionario: Entrei no Funcionário noturno");
             Calendar horaAtual = Calendar.getInstance();
             SimpleDateFormat data = new SimpleDateFormat("HH:mm:ss");
