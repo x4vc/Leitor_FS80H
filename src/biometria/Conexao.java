@@ -15,10 +15,10 @@ import java.util.Calendar;
 
 import java.util.Date;
 import java.util.Iterator;
-import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.swing.JOptionPane;
+import org.joda.time.DateTime;
 
 /*Singleton*/
 public class Conexao {
@@ -298,32 +298,33 @@ public class Conexao {
         return false;
 
     }
-public int isDiaOperacaoEspecial(int id_funcionario) {
+public int isDiaOperacaoEspecial(int id_funcionario){
+    PreparedStatement pstmt;
+    ResultSet rs;
+    String strSQL;
     
-    try {
+    strSQL = "select oe.*, oep.id_pessoal from tb_operacao_especial oe join tb_operacao_especial_pessoal oep on oe.id = oep.id_operacao_especial where CONVERT(VARCHAR(12),oe.data_hora_ini,103) <= CONVERT(VARCHAR(12),GETDATE(),103) AND CONVERT(VARCHAR(12),oe.data_hora_fim,103) >= CONVERT(VARCHAR(12),GETDATE(),103) AND oe.ativo = 1 AND oe.aprovado = 1 AND oep.id_pessoal = ?";
+    //strSQL = "select oe.* from tb_operacao_especial oe";
+    try {    
         //PreparedStatement pstmt = connection.prepareStatement("select id_calendario from tb_calendario where CONVERT(VARCHAR(12),datainicio,103) <= CONVERT(VARCHAR(12),GETDATE(),103) and CONVERT(VARCHAR(12),datafim,103) >= CONVERT(VARCHAR(12),GETDATE(),103) and ativo = 1");
-        PreparedStatement pstmt = connection.prepareStatement("select oe.*, oep.id_pessoal from tb_operacao_especial oe \n" +
-                "join tb_operacao_especial_pessoal oep on oe.id = oep.id_operacao_especial \n" +
-                "where CONVERT(VARCHAR(12),oe.data_hora_ini,103) <= CONVERT(VARCHAR(12),GETDATE(),103) \n" + 
-                "AND CONVERT(VARCHAR(12),oe.data_hora_fim,103) >= CONVERT(VARCHAR(12),GETDATE(),103) AND oe.ativo = 1 AND oe.aprovado = 1 \n" +
-                "AND oep.id_pessoal = ?");
+        pstmt = connection.prepareStatement(strSQL);
         
         pstmt.setInt(1, id_funcionario);
-        System.out.println("Entrei no metodo isDiaOperacaoEspecial()");
-        ResultSet rs = pstmt.executeQuery();
+        System.out.println("Entrei no metodo isDiaOperacaoEspecial()");  
+        System.out.println(strSQL);
+        
+        rs = pstmt.executeQuery();        
         System.out.println("Id Funcionário: " + id_funcionario);
-        System.out.println("rs = " + rs);
+        //System.out.println("rs = " + rs);
         
         
-//        if (rs == null){
-//            return 0; // 0 = Funcionário não está escalado para Operação Especial
-//        }
-
         if (rs != null && rs.next()) {
             DateFormat df = new SimpleDateFormat("dd/MM/yyyy");
             DateFormat dfAtual = new SimpleDateFormat("dd/MM/yyyy HH:mm:ss");
             java.sql.Date data_hora_ini, data_hora_fim;
             java.util.Date data_hora_atual;
+            
+            
             java.sql.Timestamp timeStamp_ini, timeStamp_fim; //timeStamp_ini_minus_30 = null, timeStamp_fim_plus_30 = null;
             java.sql.Time time_ini;
             
@@ -339,6 +340,25 @@ public int isDiaOperacaoEspecial(int id_funcionario) {
             
             timeStamp_ini = rs.getTimestamp(4);
             timeStamp_fim = rs.getTimestamp(5);
+            
+//            //Seteamos +- 30 min            
+//            Calendar calDateTimePlus30 = Calendar.getInstance();
+//            calDateTimePlus30.setTime(timeStamp_fim);
+//            
+//            System.out.println("Calendar calDateTimePlus30 = " + calDateTimePlus30);
+            
+            //Utilizando Joda-time jar
+            
+//            DateTime DateTime_ini = new DateTime(rs.getTimestamp(4));
+//            DateTime DateTime_fim = new DateTime(rs.getTimestamp(5));
+//            DateTime DateTime_ini_minus_30 = DateTime_ini.minusMinutes(30);
+//            DateTime DateTime_fim_plus_30 = DateTime_fim.plusMinutes(30);
+//            System.out.println("DateTime_ini = " + DateTime_ini);
+//            System.out.println("DateTime_ini_minus_30 = " + DateTime_ini_minus_30);
+//            System.out.println("DateTime_fim = " + DateTime_fim);
+//            System.out.println("DateTime_ini_minus_30 = " + DateTime_fim_plus_30);
+//            
+            //-----------------------------------------------------------------
             
             //timeStamp_ini_minus_30.setTime(timeStamp_ini.getTime() - TimeUnit.MINUTES.toMinutes(30));
             //timeStamp_fim_plus_30 = rs.getTimestamp(5);
@@ -357,23 +377,23 @@ public int isDiaOperacaoEspecial(int id_funcionario) {
             //System.out.println("timeStamp_ini_minus_30 = " + timeStamp_ini_minus_30);
             System.out.println("time_ini = " + time_ini);
             System.out.println("data_hora_atual = " + data_hora_atual + " - " + dfAtual.format(data_hora_atual));
-           /* 
-            if (timeStamp_ini.before(data_hora_atual))  {
-                System.out.println("timeStamp_ini.before = true");
-                
-            }
-            else {
-                System.out.println("timeStamp_ini.before = false");
-            }
             
-            if (timeStamp_fim.after(data_hora_atual))  {
-                System.out.println("timeStamp_fim.after = true");
-                
-            }
-            else {
-                System.out.println("timeStamp_fim.after = false");
-            }
-            */
+//            if (timeStamp_ini.before(data_hora_atual))  {
+//                System.out.println("timeStamp_ini.before = true");
+//                
+//            }
+//            else {
+//                System.out.println("timeStamp_ini.before = false");
+//            }
+//            
+//            if (timeStamp_fim.after(data_hora_atual))  {
+//                System.out.println("timeStamp_fim.after = true");
+//                
+//            }
+//            else {
+//                System.out.println("timeStamp_fim.after = false");
+//            }
+           
             //Verificamos se data e horário está dentro do intervalo permitido
             if ((timeStamp_ini.before(data_hora_atual))&& (timeStamp_fim.after(data_hora_atual))){
                 System.out.println(dfAtual.format(data_hora_atual) + " SIM Está dentro do intervalo permitido");
@@ -392,12 +412,51 @@ public int isDiaOperacaoEspecial(int id_funcionario) {
 //        else {
 //            return 0; // 0 = Funcionário não está escalado para Operação Especial 
 //        }
-        } catch (Exception e) {
+   
+        } 
+        catch (Exception e) {
             showErro("isDiaOperacaoEspecial(): " + e.getMessage());
             e.printStackTrace();
             System.exit(1);
         }
+    
         return 0; // 0 = Funcionário não está escalado para Operação Especial    
+}
+public int buscarIdFuncao_OperacaoEspecial(int id_funcionario){
+    PreparedStatement pstmt;
+    ResultSet rs;
+    String strSQL;
+    int nIdFuncaoOperacaoEspecial;
+    
+    nIdFuncaoOperacaoEspecial = 0;
+    
+    strSQL = "select oe.id,oe.assunto, oep.id_pessoal,oep.id_funcao_operacao_especial from tb_operacao_especial oe join tb_operacao_especial_pessoal oep on oe.id = oep.id_operacao_especial where CONVERT(VARCHAR(12),oe.data_hora_ini,103) <= CONVERT(VARCHAR(12),GETDATE(),103) AND CONVERT(VARCHAR(12),oe.data_hora_fim,103) >= CONVERT(VARCHAR(12),GETDATE(),103) AND oe.ativo = 1 AND oe.aprovado = 1 AND oep.id_pessoal = ?";
+    
+    try {    
+        //PreparedStatement pstmt = connection.prepareStatement("select id_calendario from tb_calendario where CONVERT(VARCHAR(12),datainicio,103) <= CONVERT(VARCHAR(12),GETDATE(),103) and CONVERT(VARCHAR(12),datafim,103) >= CONVERT(VARCHAR(12),GETDATE(),103) and ativo = 1");
+        pstmt = connection.prepareStatement(strSQL);
+        
+        pstmt.setInt(1, id_funcionario);
+        System.out.println("Entrei no metodo buscarIdFuncao_OperacaoEspecial()");  
+        System.out.println(strSQL);
+        
+        rs = pstmt.executeQuery();        
+        System.out.println("Id Funcionário: " + id_funcionario);
+        //System.out.println("rs = " + rs);
+        
+        
+            if (rs != null && rs.next()) {
+                
+                nIdFuncaoOperacaoEspecial = rs.getInt(4);
+
+            } 
+        }
+        catch (Exception e) {
+            showErro("buscarIdFuncao_OperacaoEspecial(): " + e.getMessage());
+            e.printStackTrace();
+            System.exit(1);
+        }
+    return nIdFuncaoOperacaoEspecial;    
 }
 
 public boolean isDiaCompensacao() {
@@ -599,7 +658,7 @@ public boolean isSetor(int idFuncionario, int idSetor) {
 
         return funcionario;
     }
-    public Acesso registrarAcessoOperacaoEspecial(Funcionario funcionario, String nomeTipoAcesso) {
+    public Acesso registrarAcessoOperacaoEspecial(Funcionario funcionario, String nomeTipoAcesso, int nId) {
         
         Acesso acesso = new Acesso();
         if ("S1"==nomeTipoAcesso){ 
@@ -617,11 +676,11 @@ public boolean isSetor(int idFuncionario, int idSetor) {
         
         PreparedStatement pstmt;
         int IdFuncionario, IdSetor, nModelo;
-        nModelo = 0; //0 ==> sem modelo (PARA NÃO PREENCHER VALOR = NULL)
+        nModelo = nId; //0 ==> sem Tipo  (PARA NÃO PREENCHER VALOR = NULL)
         IdFuncionario = funcionario.getIdFuncionario();
         IdSetor = funcionario.getIdSetor();
         try {
-            String insert = "INSERT INTO tb_acesso_operacao_especial (id_pessoal,id_setor,status,datahora, ip_ponto, id_modelo) VALUES (?,?,?,GETDATE(),?,?)";
+            String insert = "INSERT INTO tb_acesso_operacao_especial (id_pessoal,id_setor,status,datahora, ip_ponto, id_funcao_operacao_especial) VALUES (?,?,?,GETDATE(),?,?)";
             pstmt = connection.prepareStatement(insert);
             pstmt.setInt(1, IdFuncionario);
             pstmt.setInt(2, IdSetor);

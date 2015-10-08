@@ -62,6 +62,7 @@ import com.griaule.grfingerjava.IImageEventListener;
 import com.griaule.grfingerjava.IStatusEventListener;
 import com.griaule.grfingerjava.MatchingContext;
 import com.griaule.grfingerjava.Template;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.concurrent.TimeUnit;
@@ -660,7 +661,11 @@ public class Util implements IStatusEventListener, IImageEventListener, IFingerE
             // 2 ==> Faz operação especial porém ainda não pode apontar hora porque está fora do horário (+- 30 min)
             int nSegundos = 3 ; //sistema entra num "delay" por n segundos
             int isOperacao = 0;
+            int nIdFuncaoOperacaoEspecial = 0;
+            
+            
             isOperacao = conexao.isDiaOperacaoEspecial(id_funcionario);
+            
             
             switch(isOperacao){
                 case 0: //Não faz operação especial
@@ -699,11 +704,14 @@ public class Util implements IStatusEventListener, IImageEventListener, IFingerE
                 nQtdeApontamentos = conexao.buscarAcessosDiaFuncionarioOperacaoEspecial(id_funcionario);
                 System.out.println("Qtde de apontamentos encontrados para Operação Especial = " + nQtdeApontamentos );
                 
+                //Pesquisamos qual Id função o funcionário possui na operação especial
+                nIdFuncaoOperacaoEspecial = conexao.buscarIdFuncao_OperacaoEspecial(id_funcionario);
+                
                 //Salvar apontamento da Operação Especial
                 switch(nQtdeApontamentos){
                     case 0: //Não fez apontamento ainda                        
                         nomeTipoAcesso = "E1";
-                        acesso = conexao.registrarAcessoOperacaoEspecial(funcionario, nomeTipoAcesso);
+                        acesso = conexao.registrarAcessoOperacaoEspecial(funcionario, nomeTipoAcesso, nIdFuncaoOperacaoEspecial);
                         try {
                             ui.getAppletContext().showDocument(new URL("javascript:showInformacoesAcesso('" + acesso.getFuncionario().getNome() + "','" + acesso.getDescricaoSituacao() + "')"));
                             try {
@@ -716,7 +724,7 @@ public class Util implements IStatusEventListener, IImageEventListener, IFingerE
                         break;
                     case 1: //Fez apontamento de E1
                         nomeTipoAcesso = "S1";
-                        acesso = conexao.registrarAcessoOperacaoEspecial(funcionario, nomeTipoAcesso);
+                        acesso = conexao.registrarAcessoOperacaoEspecial(funcionario, nomeTipoAcesso, nIdFuncaoOperacaoEspecial);
                         try {
                             ui.getAppletContext().showDocument(new URL("javascript:showInformacoesAcesso('" + acesso.getFuncionario().getNome() + "','" + acesso.getDescricaoSituacao() + "')"));
                             try {
