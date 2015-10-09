@@ -17,8 +17,8 @@ import java.util.Date;
 import java.util.Iterator;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import javafx.scene.control.Alert;
 import javax.swing.JOptionPane;
-import org.joda.time.DateTime;
 
 /*Singleton*/
 public class Conexao {
@@ -311,7 +311,7 @@ public int isDiaOperacaoEspecial(int id_funcionario){
         
         pstmt.setInt(1, id_funcionario);
         System.out.println("Entrei no metodo isDiaOperacaoEspecial()");  
-        System.out.println(strSQL);
+        //System.out.println(strSQL);
         
         rs = pstmt.executeQuery();        
         System.out.println("Id Funcionário: " + id_funcionario);
@@ -341,11 +341,53 @@ public int isDiaOperacaoEspecial(int id_funcionario){
             timeStamp_ini = rs.getTimestamp(4);
             timeStamp_fim = rs.getTimestamp(5);
             
-//            //Seteamos +- 30 min            
-//            Calendar calDateTimePlus30 = Calendar.getInstance();
-//            calDateTimePlus30.setTime(timeStamp_fim);
-//            
-//            System.out.println("Calendar calDateTimePlus30 = " + calDateTimePlus30);
+            //Seteamos +- 30 min utilizando a Clase Calendar           
+            Calendar calToday,calDateFim,calDateIni;
+            long calDateTimePlus30, calDateTimeMinus30;
+            
+            calDateIni = Calendar.getInstance();
+            calDateFim = Calendar.getInstance();
+            calToday = Calendar.getInstance();
+            
+            calDateTimePlus30 = 0;
+            calDateTimeMinus30 = 0;
+            
+            calDateIni.setTime(timeStamp_ini);            
+            System.out.println("calDateIni = " + calDateIni.getTimeInMillis());
+            calDateIni.add(Calendar.MINUTE, -31);
+            calDateTimeMinus30 = calDateIni.getTimeInMillis();
+            
+            calDateFim.setTime(timeStamp_fim);            
+            System.out.println("calDateFim = " + calDateFim.getTimeInMillis());
+            calDateFim.add(Calendar.MINUTE, 31);
+            calDateTimePlus30 = calDateFim.getTimeInMillis();
+            
+            
+            
+            if ((calDateTimeMinus30 < calToday.getTimeInMillis()) && (calDateTimePlus30 > calToday.getTimeInMillis()))
+            {
+                System.out.println(" Data e hora: " +  calToday.getTimeInMillis()+" está depois do horário calDateTimeMinus30 = " + calDateTimeMinus30 );
+                System.out.println(" Data e hora: " +  calToday.getTimeInMillis()+" está antes do horário calDateTimePlus30 = " + calDateTimePlus30 );
+                System.out.println("1 = SIM Está dentro do intervalo permitido");
+                rs.close();
+                return 1; // 1 = SIM Está dentro do intervalo permitido
+                
+            } else {
+                System.out.println(" Data e hora: " +  calToday.getTimeInMillis()+" está antes do horário calDateTimeMinus30 = " + calDateTimeMinus30 );
+                System.out.println(" Data e hora: " +  calToday.getTimeInMillis()+" está depois do horário calDateTimePlus30 =" + calDateTimePlus30 );
+                System.out.println("2 = NÃO Está dentro do intervalo permitido");
+                rs.close();
+                return 2; // 2 = NÃO Está dentro do intervalo permitido
+                
+            }
+            
+            
+//            Alert alert = new Alert(Alert.AlertType.INFORMATION);
+//                alert.setTitle("Operação Especial");
+//                alert.setHeaderText("isOperaao");
+//                alert.setContentText("Valor = False");
+//                alert.showAndWait();
+            //----------Fim de utilização da Clase Calendar
             
             //Utilizando Joda-time jar
             
@@ -363,20 +405,20 @@ public int isDiaOperacaoEspecial(int id_funcionario){
             //timeStamp_ini_minus_30.setTime(timeStamp_ini.getTime() - TimeUnit.MINUTES.toMinutes(30));
             //timeStamp_fim_plus_30 = rs.getTimestamp(5);
             
-            time_ini = rs.getTime(4);            
-            data_hora_fim = rs.getDate(5); //campo data_hora_fim
-            strDataHoraFim = df.format(data_hora_fim);
-            
-            
-            
-            System.out.println(id_funcionario);
-            System.out.println("data_hora_ini = " + strDataHoraIni);
-            System.out.println("data_hora_fim = " + strDataHoraFim);
-            System.out.println("timeStamp_ini = " + timeStamp_ini);
-            System.out.println("timeStamp_fim = " + timeStamp_fim);
-            //System.out.println("timeStamp_ini_minus_30 = " + timeStamp_ini_minus_30);
-            System.out.println("time_ini = " + time_ini);
-            System.out.println("data_hora_atual = " + data_hora_atual + " - " + dfAtual.format(data_hora_atual));
+//            time_ini = rs.getTime(4);            
+//            data_hora_fim = rs.getDate(5); //campo data_hora_fim
+//            strDataHoraFim = df.format(data_hora_fim);
+//            
+//            
+//            
+//            System.out.println(id_funcionario);
+//            System.out.println("data_hora_ini = " + strDataHoraIni);
+//            System.out.println("data_hora_fim = " + strDataHoraFim);
+//            System.out.println("timeStamp_ini = " + timeStamp_ini);
+//            System.out.println("timeStamp_fim = " + timeStamp_fim);
+//            //System.out.println("timeStamp_ini_minus_30 = " + timeStamp_ini_minus_30);
+//            System.out.println("time_ini = " + time_ini);
+//            System.out.println("data_hora_atual = " + data_hora_atual + " - " + dfAtual.format(data_hora_atual));
             
 //            if (timeStamp_ini.before(data_hora_atual))  {
 //                System.out.println("timeStamp_ini.before = true");
@@ -394,7 +436,7 @@ public int isDiaOperacaoEspecial(int id_funcionario){
 //                System.out.println("timeStamp_fim.after = false");
 //            }
            
-            //Verificamos se data e horário está dentro do intervalo permitido
+            /*//Verificamos se data e horário está dentro do intervalo permitido
             if ((timeStamp_ini.before(data_hora_atual))&& (timeStamp_fim.after(data_hora_atual))){
                 System.out.println(dfAtual.format(data_hora_atual) + " SIM Está dentro do intervalo permitido");
                 rs.close();
@@ -407,7 +449,7 @@ public int isDiaOperacaoEspecial(int id_funcionario){
             }
             
             //rs.close();
-            //return true;
+            //return true;*/
         }
 //        else {
 //            return 0; // 0 = Funcionário não está escalado para Operação Especial 
@@ -438,7 +480,7 @@ public int buscarIdFuncao_OperacaoEspecial(int id_funcionario){
         
         pstmt.setInt(1, id_funcionario);
         System.out.println("Entrei no metodo buscarIdFuncao_OperacaoEspecial()");  
-        System.out.println(strSQL);
+        //System.out.println(strSQL);
         
         rs = pstmt.executeQuery();        
         System.out.println("Id Funcionário: " + id_funcionario);
