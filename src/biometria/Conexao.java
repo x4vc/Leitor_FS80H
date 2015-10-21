@@ -3,21 +3,25 @@ package biometria;
 import Modelo.AfastamentoLegal;
 import Modelo.Ponto;
 import java.net.InetAddress;
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Timestamp;
 import java.text.DateFormat;
+import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
 
 import java.util.Date;
 import java.util.Iterator;
+import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import javafx.scene.control.Alert;
 import javax.swing.JOptionPane;
 
 /*Singleton*/
@@ -464,6 +468,138 @@ public int isDiaOperacaoEspecial(int id_funcionario){
     
         return 0; // 0 = Funcionário não está escalado para Operação Especial    
 }
+public int isJornada12Horas(int id_funcionario){
+    PreparedStatement pstmt;
+    ResultSet rs;
+    String strSQL;
+    
+    strSQL = "select p.id_pessoal, p.nome, p.id_setor, p.inativo, p.qtdHoras, p.id_vinculo, p.id_funcao, p.id_modelo, p.banco_horas,m.id_modelo, m.entrada1, m.saida1, m.entrada2, m.saida2, m.jornada, m.tolerancia from tb_pessoal p join tb_modelo m on p.id_modelo = m.id_modelo where m.jornada = '12' and p.inativo = 0 and p.id_pessoal = ?";
+    //strSQL = "select oe.* from tb_operacao_especial oe";
+    try {    
+            //PreparedStatement pstmt = connection.prepareStatement("select id_calendario from tb_calendario where CONVERT(VARCHAR(12),datainicio,103) <= CONVERT(VARCHAR(12),GETDATE(),103) and CONVERT(VARCHAR(12),datafim,103) >= CONVERT(VARCHAR(12),GETDATE(),103) and ativo = 1");
+            pstmt = connection.prepareStatement(strSQL);
+
+            pstmt.setInt(1, id_funcionario);
+            System.out.println("Entrei no metodo isJornada12Horas()");  
+            //System.out.println(strSQL);
+
+            rs = pstmt.executeQuery();        
+            System.out.println("Id Funcionário: " + id_funcionario);
+            //System.out.println("rs = " + rs);
+
+            if (rs != null && rs.next()) {
+                String strHoraEntrada, strToday, strTodayHoraEntrada;
+                java.sql.Timestamp timeStamp_ini, timeStamp_fim;
+                DateFormat df = new SimpleDateFormat("dd/MM/yyyy");
+                DateFormat dfAtual = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+                java.util.Date data_hora_atual,data_hora_entrada;
+                
+                data_hora_atual = new Date();               
+                
+                //strToday = df.format(data_hora_atual);
+                strToday = dfAtual.format(data_hora_atual);
+                
+                //seteamos hora de entrada
+                strHoraEntrada = rs.getString(11);
+                
+                strTodayHoraEntrada = strToday + " " + strHoraEntrada + ":00";
+                
+                System.out.println("strHoraEntrada = " + strHoraEntrada);
+                System.out.println("Date() = " + data_hora_atual);
+                System.out.println("df = " + strToday);
+                System.out.println("Today = " + strTodayHoraEntrada);
+                
+                //convertemos String to TimeStamp        
+                try {
+                    data_hora_entrada = dfAtual.parse(strTodayHoraEntrada);
+                    timeStamp_ini = new Timestamp(data_hora_entrada.getTime());
+                    System.out.println(data_hora_entrada);
+                    System.out.println(timeStamp_ini); 
+                    System.out.println(timeStamp_ini.getTime());
+
+                    //Seteamos +- 60 min utilizando a Clase Calendar           
+                    Calendar calToday,calDateFim,calDateIni;
+                    Calendar data_inicial, data_final;
+                    String strDataInicial, strDataFinal;
+                    
+                    long calDateTimePlus60, calDateTimeMinus60;
+                    long minutosToday,minutosIni, minutosFim;
+                    int nQtdeAcessos;
+
+                    calDateIni = Calendar.getInstance();
+                    calDateFim = Calendar.getInstance();
+                    calToday = Calendar.getInstance();
+
+                    calDateTimePlus60 = 0;
+                    calDateTimeMinus60 = 0;
+                    minutosToday = 0;
+                    minutosIni = 0;
+                    minutosFim = 0;
+                    
+                    nQtdeAcessos = 0;
+                    
+
+                    calDateIni.setTime(timeStamp_ini);            
+                    System.out.println("calDateIni = " + calDateIni.getTimeInMillis());
+                    calDateIni.add(Calendar.MINUTE, -61); //Data entrada permitida = 1hora antes
+                    calDateTimeMinus60 = calDateIni.getTimeInMillis();
+                    System.out.println("calDateIni - 61 min = " + calDateIni.getTimeInMillis());
+                    minutosIni = (calDateTimeMinus60/1000)/60;
+                    System.out.println("minutosIni = " + minutosIni);
+
+                    calDateFim.setTime(timeStamp_ini);            
+                    System.out.println("calDateFim = " + calDateFim.getTimeInMillis());
+                    calDateFim.add(Calendar.MINUTE, 781); // data de saida permitida = 13 horas (jornada 12hr+1hr)
+                    calDateTimePlus60 = calDateFim.getTimeInMillis();
+                    System.out.println("calDateFim = (calDateIni + 13hr) = " + calDateFim.getTimeInMillis());
+                    minutosFim = (calDateTimePlus60/1000)/60;
+                    System.out.println("minutosFim = " + minutosFim);
+
+                    System.out.println("calToday = " + calToday.getTime());
+                    minutosToday = (calToday.getTimeInMillis()/1000)/60;
+                    System.out.println("minutosToday = " + minutosToday);
+
+                    //Verificamos se minutosToday está dentro do tempo permitido para bater ponto
+                    if ((minutosIni < minutosToday) && (minutosFim > minutosToday))
+                    {
+                        System.out.println(" Data e hora: " +  minutosToday +" está depois do horário minutosIni = " + minutosIni );
+                        System.out.println(" Data e hora: " +  minutosToday+" está antes do horário minutosFim = " + minutosFim );
+                        System.out.println("1 = SIM Está dentro do intervalo permitido");
+                        strDataInicial = "";
+                        strDataFinal = "";
+                        data_inicial = Calendar.getInstance();
+                        data_final = Calendar.getInstance();
+                
+                        data_inicial.setTimeInMillis(calDateTimeMinus60);
+                        data_final.setTimeInMillis(calDateTimePlus60);
+                
+                        strDataInicial = dfAtual.format(data_inicial.getTime())+".000";
+                        strDataFinal = dfAtual.format(data_final.getTime())+".000";
+                        
+                        nQtdeAcessos = buscarAcessosDiaFuncionarioJornada12Horas(id_funcionario, strDataInicial, strDataFinal);
+                        //rs.close();
+                        //return 1; // 1 = SIM Está dentro do intervalo permitido
+                        return nQtdeAcessos;
+
+                    } else {
+                        System.out.println("Data e hora Today : " +  minutosToday +" está antes do horário minutosIni = " + minutosIni );
+                        System.out.println("Horário minutosFim = " + minutosFim + " está depois do Data e hora Today: " +  minutosToday );
+                        System.out.println("2 = NÃO Está dentro do intervalo permitido");
+                        //rs.close();
+                        return -1; // 2 = NÃO Está dentro do intervalo permitido
+
+                    }
+                } catch (ParseException e) {
+                    System.out.println("Exception :" + e);
+                }                        
+            }
+        }catch (Exception e) {
+            showErro("isJornada12Horas(): " + e.getMessage());
+            e.printStackTrace();
+            System.exit(1);
+        }
+    return -1;
+}
 public int buscarIdFuncao_OperacaoEspecial(int id_funcionario){
     PreparedStatement pstmt;
     ResultSet rs;
@@ -700,6 +836,48 @@ public boolean isSetor(int idFuncionario, int idSetor) {
 
         return funcionario;
     }
+    
+    public Acesso registrarAcessoJornada12Horas(Funcionario funcionario, String nomeTipoAcesso, int nIdSetor){
+        Acesso acesso = new Acesso();
+        Jornada jornadaFuncionario = this.buscarJornadaFuncionarioID(funcionario.getIdFuncionario(), false);
+        if ("S1"==nomeTipoAcesso){ 
+            acesso.setFuncionario(funcionario);
+            acesso.setPrimeiroAcesso(false);
+            acesso.setEntrada(false);
+            acesso.setAtrasado(false);
+        } 
+        if ("E1"==nomeTipoAcesso){             
+            acesso.setFuncionario(funcionario);
+            acesso.setPrimeiroAcesso(true);
+            acesso.setEntrada(true);
+            acesso.setAtrasado(false);
+        }
+        
+        PreparedStatement pstmt;
+        int IdFuncionario, IdSetor, nModelo;
+        nModelo = jornadaFuncionario.getId();
+        IdFuncionario = funcionario.getIdFuncionario();
+        IdSetor = funcionario.getIdSetor();
+        try {
+            
+            String insert = "INSERT INTO tb_acesso (id_pessoal,datahora,id_setor,status,ip_ponto, id_modelo) VALUES (?,GETDATE(),?,?,?,?)";
+            pstmt = connection.prepareStatement(insert);
+            pstmt.setInt(1, IdFuncionario);
+            pstmt.setInt(2, IdSetor);
+            pstmt.setString(3, nomeTipoAcesso);
+            pstmt.setString(4, InetAddress.getLocalHost().getHostAddress());
+            pstmt.setInt(5, nModelo);
+            pstmt.executeUpdate();
+            
+        }
+        catch (Exception e) {
+            showErro("registrarAcessoJornada12Horas(int id_funcionario): " + e.getMessage());            
+            //e.printStackTrace();
+            //System.exit(1);
+        }
+        return acesso;        
+    }
+    
     public Acesso registrarAcessoOperacaoEspecial(Funcionario funcionario, String nomeTipoAcesso, int nId) {
         
         Acesso acesso = new Acesso();
@@ -1301,9 +1479,9 @@ public boolean isSetor(int idFuncionario, int idSetor) {
             //Dados do servidor de homologação Afrodite
             String server = "172.22.8.17";
             //Database Produção
-            //String dataBase = "DB_ACESSO";
+            String dataBase = "DB_ACESSO";
             //Database Teste/Homologação
-            String dataBase = "DB_ACESSO_HOMOLOG";
+            //String dataBase = "DB_ACESSO_HOMOLOG";
             System.out.println("Connectado com o: " + dataBase);
             String usuario = "acesso";
             String senha = "#4c3ss0$";
@@ -1518,7 +1696,40 @@ public boolean isSetor(int idFuncionario, int idSetor) {
         return vinculo;
 
     }
+    public int buscarAcessosDiaFuncionarioJornada12Horas(int idFuncionario, String strDataInicial, String strDataFinal){
+        
+        //Funcionario funcionario = BuscarFuncionarioPorId(idFuncionario);
+        //Acesso acesso = null;
+        
+        
+        int nQtde = -1;
+        //int nIdSetor = 0;
+        //int nSegundos = 3 ; //sistema entra num "delay" por n segundos
+        //nIdSetor = funcionario.getIdSetor();
+        //String nomeTipoAcesso = "";
+        //String query = "select count(*) AS qtde_registros from tb_acesso where id_pessoal = ? and  convert(varchar(30),datahora,102) = convert(varchar(30),getdate(),102)";
+        String query = "select count(*) AS qtde_registros from tb_acesso where id_pessoal = ? and datahora >= '" + strDataInicial + "' and datahora <= '" + strDataFinal + "'";
+        System.out.println("query = " + query);
+        try {
+            PreparedStatement pstmt = connection.prepareStatement(query);
+            pstmt.setInt(1, idFuncionario);
 
+            ResultSet rs = pstmt.executeQuery();
+            
+            rs.next();
+            nQtde = rs.getInt("qtde_registros");
+            System.out.println("Quantidade de registros encontrados  na tabela tb_acesso = " + nQtde);
+            return nQtde;
+            }
+
+        catch (SQLException e) {
+            showErro("salvarAcessosDiaFuncionarioJornada12Horas: " + e.getMessage());
+            e.printStackTrace();
+
+        }
+        return nQtde;
+    }
+    
     int buscarAcessosDiaFuncionarioOperacaoEspecial(int idFuncionario) {
         int nQtde = 0;
         String query = "select count(*) AS qtde_registros from tb_acesso_operacao_especial where id_pessoal = ? and  convert(varchar(30),datahora,102) = convert(varchar(30),getdate(),102)";

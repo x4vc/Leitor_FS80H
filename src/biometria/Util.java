@@ -662,6 +662,11 @@ public class Util implements IStatusEventListener, IImageEventListener, IFingerE
             int nSegundos = 3 ; //sistema entra num "delay" por n segundos
             int isOperacao = 0;
             int nIdFuncaoOperacaoEspecial = 0;
+            int nIdSetor = 0;
+            
+            String nomeTipoAcesso = "";
+            
+            nIdSetor = funcionario.getIdSetor();
             
             
             isOperacao = conexao.isDiaOperacaoEspecial(id_funcionario);
@@ -692,10 +697,11 @@ public class Util implements IStatusEventListener, IImageEventListener, IFingerE
             }
                    
             
-            if (bOperacaoEspecial){                
+            if (bOperacaoEspecial)
+            {                
                 
                 int nQtdeApontamentos = 0;
-                String nomeTipoAcesso = "";
+                
                 
                 System.out.println("Entrei no Operacao Especial!");
                 System.out.println("Operacao Especial = " + isOperacao); 
@@ -708,7 +714,8 @@ public class Util implements IStatusEventListener, IImageEventListener, IFingerE
                 nIdFuncaoOperacaoEspecial = conexao.buscarIdFuncao_OperacaoEspecial(id_funcionario);
                 
                 //Salvar apontamento da Operação Especial
-                switch(nQtdeApontamentos){
+                switch(nQtdeApontamentos)
+                {
                     case 0: //Não fez apontamento ainda                        
                         nomeTipoAcesso = "E1";
                         acesso = conexao.registrarAcessoOperacaoEspecial(funcionario, nomeTipoAcesso, nIdFuncaoOperacaoEspecial);
@@ -749,87 +756,128 @@ public class Util implements IStatusEventListener, IImageEventListener, IFingerE
                     default:
                         break;
                 } 
-//                Alert alert = new Alert(Alert.AlertType.INFORMATION);
-//                alert.setTitle("Operação Especial");
-//                alert.setHeaderText("isOperaao");
-//                alert.setContentText("Valor = False");
-//                alert.showAndWait();
+
             }
-            else {
-                System.out.println("Operacao Especial = " + isOperacao);
-//                Alert alert = new Alert(Alert.AlertType.INFORMATION);
-//                alert.setTitle("Operação Especial");
-//                alert.setHeaderText("isOperaao");
-//                alert.setContentText("Valor = False");
-//                alert.showAndWait();
-                //Código para compensação e apontamento Normal
-            //}
-            
-            
-                boolean isJornadaNova = false; // getdate() não precisa compensar
+            else 
+            {
+                //Código para jornada de 12 horas
+                int QtdeAcessosJornada12Horas = -1; // - 1 ==> Não aponta horas porque funcionário não faz parte da jornada de 12 horas
+                
+                QtdeAcessosJornada12Horas = conexao.isJornada12Horas(id_funcionario);
+                if (QtdeAcessosJornada12Horas > -1)
+                {
+                    //Salvamos o apontamento de horas na tabela tb_acesso
+                    //Salvar apontamento da Operação Especial
+                    switch(QtdeAcessosJornada12Horas){
+                        case 0: //Não fez apontamento ainda                        
+                            nomeTipoAcesso = "E1";
+                            acesso = conexao.registrarAcessoJornada12Horas(funcionario, nomeTipoAcesso, nIdSetor);
+                            try {
+                                ui.getAppletContext().showDocument(new URL("javascript:showInformacoesAcesso('" + acesso.getFuncionario().getNome() + "','" + acesso.getDescricaoSituacao() + "')"));
+                                try {
+                                    TimeUnit.SECONDS.sleep(nSegundos);
+                                }catch (InterruptedException e){                            
+                                    }
+                            }catch (MalformedURLException e) {
+                                e.printStackTrace();
+                            }
+                            break;
+                        case 1: //Fez apontamento de E
+                            nomeTipoAcesso = "S1";
+                            acesso = conexao.registrarAcessoJornada12Horas(funcionario, nomeTipoAcesso, nIdSetor);
+                            try {
+                                ui.getAppletContext().showDocument(new URL("javascript:showInformacoesAcesso('" + acesso.getFuncionario().getNome() + "','" + acesso.getDescricaoSituacao() + "')"));
+                                try {
+                                    TimeUnit.SECONDS.sleep(nSegundos);
+                                }catch (InterruptedException e){                            
+                                    }
+                            }catch (MalformedURLException e) {
+                                e.printStackTrace();
+                            }
+                            break;
+                        case 2: //Fez apontamento E1 e S1 (não pode apontar mais)                        
+                            try {                                                  
+                                ui.getAppletContext().showDocument(new URL("javascript:showLimiteDiarioAtingido('" + funcionario.getNome() + "')"));
+                                try {
+                                    TimeUnit.SECONDS.sleep(nSegundos);
+                                }catch (InterruptedException e){                            
+                                    }
+                            }catch (MalformedURLException e) {
+                                e.printStackTrace();
+                            }
+                            break;
+                        default:
+                            break;
+                    } 
+                }
+                //-------------- FIM Código para jornada de 12 horas
+                else if (QtdeAcessosJornada12Horas == -1)
+                {
+                    boolean isJornadaNova = false;
+                    // getdate() não precisa compensar
 
-                System.out.println("Id funcionário que bateu com o código binario da digital = " + id_funcionario);
-                //Funcionario funcionario = conexao.BuscarFuncionarioPorId(id_funcionario);
+                    System.out.println("Id funcionário que bateu com o código binario da digital = " + id_funcionario);
+                    //Funcionario funcionario = conexao.BuscarFuncionarioPorId(id_funcionario);
 
-                //Jornada tipoJornadaFuncionario = conexao.buscarJornadaFuncionarioID(id_funcionario);
-                //Verificamos o tipo de jornada por Id do funcionário, se isJornadaNova == true então precisa compensar dia
-                Jornada tipoJornadaFuncionario = conexao.buscarJornadaFuncionarioID(id_funcionario, isJornadaNova);
+                    //Jornada tipoJornadaFuncionario = conexao.buscarJornadaFuncionarioID(id_funcionario);
+                    //Verificamos o tipo de jornada por Id do funcionário, se isJornadaNova == true então precisa compensar dia
+                    Jornada tipoJornadaFuncionario = conexao.buscarJornadaFuncionarioID(id_funcionario, isJornadaNova);
 
-                boolean bloquearAcesso = conexao.BloquearAcesso(funcionario.getIdFuncionario());
+                    boolean bloquearAcesso = conexao.BloquearAcesso(funcionario.getIdFuncionario());
 
-                ui.writeLog("BLOQUEIO: " + dateFormat.format(new Date()));
+                    ui.writeLog("BLOQUEIO: " + dateFormat.format(new Date()));
 
-                if (bloquearAcesso == true) {
-                    try {
-                        //ui.writeLog("Acesso bloqueado: " + funcionario.getNome());
-                        ui.getAppletContext().showDocument(new URL("javascript:bloquearAcesso('" + funcionario.getNome() + "')"));
-                    } catch (MalformedURLException e) {
-                        e.printStackTrace();
-                    }
+                    if (bloquearAcesso == true) {
+                        try {
+                            //ui.writeLog("Acesso bloqueado: " + funcionario.getNome());
+                            ui.getAppletContext().showDocument(new URL("javascript:bloquearAcesso('" + funcionario.getNome() + "')"));
+                        } catch (MalformedURLException e) {
+                            e.printStackTrace();
+                        }
 
-                } else {
-//                    alert = new Alert(Alert.AlertType.INFORMATION);
-//                    alert.setTitle("Operação Especial");
-//                    alert.setHeaderText("isOperaao");
-//                    alert.setContentText("Valor = False");
-//                    alert.showAndWait();
-                    //Acesso acesso = null;
-                    acesso = null;
+                    } 
+                    else 
+                    {
+    
+                        //Acesso acesso = null;
+                        acesso = null;
 
-                    //Verificamos se a data é para compensação
-                    boolean diaCompensacao = conexao.isDiaCompensacao();
-                    
-                    if(true == diaCompensacao){
-                        int nSize = 0;
-                        int nCount = 0;
-                        Date dataReferencia;
-                        int idTipoCompensacao;
-                        int idSetor;
-                        int idPessoal;
-                        boolean isAfastado = false;
+                        //Verificamos se a data é para compensação
+                        boolean diaCompensacao = conexao.isDiaCompensacao();
 
-                        boolean isSetor = false;
+                        if(true == diaCompensacao)
+                        {
+                            int nSize = 0;
+                            int nCount = 0;
+                            Date dataReferencia;
+                            int idTipoCompensacao;
+                            int idSetor;
+                            int idPessoal;
+                            boolean isAfastado = false;
 
-                        boolean isLoop = true;
-                        boolean isLoop2 = true;
+                            boolean isSetor = false;
 
-                        //Verificamos quantidade de registros que devem ser compensados no dia
-                        ArrayList<Compensacao> compensacao = conexao.SetearCompensacao();
+                            boolean isLoop = true;
+                            boolean isLoop2 = true;
 
-                        nSize = compensacao.size();   
-                        System.out.println("Quantidade de compensações achadas no banco baseado no getdate():" + nSize);
-                        if (nSize == 1 ){
-                            idTipoCompensacao=compensacao.get(0).getIdTipoCompensacao();
-                            dataReferencia = compensacao.get(0).getDataReferencia();
-                            idSetor = compensacao.get(0).getIdSetor();
-                            idPessoal = compensacao.get(0).getIdPessoal();
+                            //Verificamos quantidade de registros que devem ser compensados no dia
+                            ArrayList<Compensacao> compensacao = conexao.SetearCompensacao();
 
-                            //Verificamos se funcionário possui afastamento legal na data de referencia
-                            isAfastado = conexao.isAfastadoLegal(id_funcionario, dataReferencia) ;
-                            System.out.println("Id Tipo compensação (nSize == 1) = " + idTipoCompensacao);
-                            if (false == isAfastado){
-                                switch(idTipoCompensacao){
-                                    case 1: //Todos
+                            nSize = compensacao.size();   
+                            System.out.println("Quantidade de compensações achadas no banco baseado no getdate():" + nSize);
+                            if (nSize == 1 )
+                            {
+                                idTipoCompensacao=compensacao.get(0).getIdTipoCompensacao();
+                                dataReferencia = compensacao.get(0).getDataReferencia();
+                                idSetor = compensacao.get(0).getIdSetor();
+                                idPessoal = compensacao.get(0).getIdPessoal();
+
+                                //Verificamos se funcionário possui afastamento legal na data de referencia
+                                isAfastado = conexao.isAfastadoLegal(id_funcionario, dataReferencia) ;
+                                System.out.println("Id Tipo compensação (nSize == 1) = " + idTipoCompensacao);
+                                if (false == isAfastado){
+                                    switch(idTipoCompensacao){
+                                        case 1: //Todos
                                         // verificamos o valor a ser utilizado na jornada
                                         isJornadaNova = true;
                                         break;
@@ -856,7 +904,9 @@ public class Util implements IStatusEventListener, IImageEventListener, IFingerE
                                 }
                             }
 
-                        } else { // nSize > 1
+                        } 
+                        else 
+                        { // nSize > 1
                             System.out.println("Entrou no else quando nSize > 1");
                             try {
                                 do {
@@ -921,7 +971,9 @@ public class Util implements IStatusEventListener, IImageEventListener, IFingerE
                             }
                         }
 
-                    } else { // getdate() Data de hoje não precisa compensar
+                    } 
+                    else 
+                    { // getdate() Data de hoje não precisa compensar
                         isJornadaNova = false;                    
                     }
                     
@@ -978,8 +1030,9 @@ public class Util implements IStatusEventListener, IImageEventListener, IFingerE
 
                     //}
                 }
+            } //else QtdeAcessosJornada12Horas == -1
             }
-        }
+        }    
         else {
             try {
                 //ui.writeLog("Nao identificado");
