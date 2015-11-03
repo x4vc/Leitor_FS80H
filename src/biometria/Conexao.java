@@ -1453,10 +1453,10 @@ public boolean isSetor(int idFuncionario, int idSetor) {
         String queryPermuta;
         
         if (true == isJornadaNova) {
-            queryPermuta = "Select * from tb_modelo where id_modelo = (SELECT id_modelo_compensacao from tb_modelo_compensacao WHERE id_modelo = (select id_modelo from tb_modelo_funcionario_permuta where id_funcionario = ? and CONVERT(VARCHAR,getdate(),103) BETWEEN CONVERT(VARCHAR,data_inicio,103) AND CONVERT(VARCHAR,data_fim,103)  and STATUS = 1))";
+            queryPermuta = "Select * from tb_modelo where id_modelo = (SELECT id_modelo_compensacao from tb_modelo_compensacao WHERE id_modelo = (select id_modelo from tb_modelo_funcionario_permuta where id_funcionario = ? and CONVERT(VARCHAR,getdate(),102) BETWEEN CONVERT(VARCHAR,data_inicio,102) AND CONVERT(VARCHAR,data_fim,102)  and STATUS = 1))";
             
         } else {
-            queryPermuta = "select id_modelo from tb_modelo_funcionario_permuta where id_funcionario = ? and CONVERT(VARCHAR,getdate(),103) BETWEEN CONVERT(VARCHAR,data_inicio,103) AND CONVERT(VARCHAR,data_fim,103)  and STATUS = 1";
+            queryPermuta = "select id_modelo from tb_modelo_funcionario_permuta where id_funcionario = ? and CONVERT(VARCHAR,getdate(),102) BETWEEN CONVERT(VARCHAR,data_inicio,102) AND CONVERT(VARCHAR,data_fim,102)  and STATUS = 1";
         }
         
         Jornada jornada = null;
