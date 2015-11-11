@@ -905,7 +905,7 @@ public class Util implements IStatusEventListener, IImageEventListener, IFingerE
                             }
 
                         } 
-                        else 
+                            else if  (nSize > 1)
                         { // nSize > 1
                             System.out.println("Entrou no else quando nSize > 1");
                             try {
