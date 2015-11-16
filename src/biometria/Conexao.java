@@ -307,7 +307,7 @@ public int isDiaOperacaoEspecial(int id_funcionario){
     ResultSet rs;
     String strSQL;
     
-    strSQL = "select oe.*, oep.id_pessoal from tb_operacao_especial oe join tb_operacao_especial_pessoal oep on oe.id = oep.id_operacao_especial where CONVERT(VARCHAR(12),oe.data_hora_ini,103) <= CONVERT(VARCHAR(12),GETDATE(),103) AND CONVERT(VARCHAR(12),oe.data_hora_fim,103) >= CONVERT(VARCHAR(12),GETDATE(),103) AND oe.ativo = 1 AND oe.aprovado = 1 AND oep.id_pessoal = ?";
+    strSQL = "select oe.*, oep.id_pessoal from tb_operacao_especial oe join tb_operacao_especial_pessoal oep on oe.id = oep.id_operacao_especial where CONVERT(VARCHAR(12),oe.data_hora_ini,102) <= CONVERT(VARCHAR(12),GETDATE(),102) AND CONVERT(VARCHAR(12),oe.data_hora_fim,102) >= CONVERT(VARCHAR(12),GETDATE(),102) AND oe.ativo = 1 AND oe.aprovado = 1 AND oep.id_pessoal = ?";
     //strSQL = "select oe.* from tb_operacao_especial oe";
     try {    
         //PreparedStatement pstmt = connection.prepareStatement("select id_calendario from tb_calendario where CONVERT(VARCHAR(12),datainicio,103) <= CONVERT(VARCHAR(12),GETDATE(),103) and CONVERT(VARCHAR(12),datafim,103) >= CONVERT(VARCHAR(12),GETDATE(),103) and ativo = 1");
@@ -488,37 +488,63 @@ public int isJornada12Horas(int id_funcionario){
             //System.out.println("rs = " + rs);
 
             if (rs != null && rs.next()) {
-                String strHoraEntrada, strToday, strTodayHoraEntrada;
-                java.sql.Timestamp timeStamp_ini, timeStamp_fim;
-                DateFormat df = new SimpleDateFormat("dd/MM/yyyy");
+                String strHoraEntrada, strHoraSaida, strToday, strTodayHoraEntrada, strTodayHoraSaida;
+                int nTolerancia = 0, nTolerancia02 = 0;
+                int nTolerancia12hrs = 0;
+                java.sql.Timestamp timeStamp_ini, timeStamp_fim, timeStamp_hora_saida;
+                DateFormat df = new SimpleDateFormat("yyyy-MM-dd");
                 DateFormat dfAtual = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-                java.util.Date data_hora_atual,data_hora_entrada;
+                java.util.Date data_hora_atual,data_hora_entrada,data_hora_saida;
                 
                 data_hora_atual = new Date();               
                 
-                //strToday = df.format(data_hora_atual);
-                strToday = dfAtual.format(data_hora_atual);
+                strToday = df.format(data_hora_atual);
+                //strToday = dfAtual.format(data_hora_atual);
                 
-                //seteamos hora de entrada
+                //seteamos hora de entrada e saida
                 strHoraEntrada = rs.getString(11);
+                strHoraSaida = rs.getString(12);
+                nTolerancia = rs.getInt(16);
+                nTolerancia02 = rs.getInt(16);
+                
+                nTolerancia = nTolerancia + 1;
+                nTolerancia02 = nTolerancia02 + 1;
+                
+                nTolerancia12hrs = (12*60) + nTolerancia;
                 
                 strTodayHoraEntrada = strToday + " " + strHoraEntrada + ":00";
+                strTodayHoraSaida = strToday + " " + strHoraSaida + ":00";
                 
                 System.out.println("strHoraEntrada = " + strHoraEntrada);
                 System.out.println("Date() = " + data_hora_atual);
                 System.out.println("df = " + strToday);
-                System.out.println("Today = " + strTodayHoraEntrada);
-                
+                System.out.println("strTodayHoraEntrada = " + strTodayHoraEntrada);
+                System.out.println("strTodayHoraSaida = " + strTodayHoraSaida);
+                System.out.println("Tolerancia = " + nTolerancia);
+                System.out.println("Tolerancia12hrs = " + nTolerancia12hrs);
                 //convertemos String to TimeStamp        
                 try {
                     data_hora_entrada = dfAtual.parse(strTodayHoraEntrada);
                     timeStamp_ini = new Timestamp(data_hora_entrada.getTime());
+                    
+                    data_hora_saida = dfAtual.parse(strTodayHoraSaida);
+                    timeStamp_hora_saida = new Timestamp(data_hora_saida.getTime());
+                    
                     System.out.println(data_hora_entrada);
                     System.out.println(timeStamp_ini); 
                     System.out.println(timeStamp_ini.getTime());
 
                     //Seteamos +- 60 min utilizando a Clase Calendar           
                     Calendar calToday,calDateFim,calDateIni;
+                    
+                    // Seteamos variaveis para virada do dia
+                    // y que será utilizado quando o intervalo de 12 hrs não 
+                    // estiver no mesmo dia
+                    Calendar calDataHoraIni_02,calDataHoraFim_02;
+                    long calDateTimePlus60_02, calDateTimeMinus60_02;
+                    long minutosIni_02, minutosFim_02;
+                    //------------------------------------------------------    
+                    
                     Calendar data_inicial, data_final;
                     String strDataInicial, strDataFinal;
                     
@@ -529,19 +555,27 @@ public int isJornada12Horas(int id_funcionario){
                     calDateIni = Calendar.getInstance();
                     calDateFim = Calendar.getInstance();
                     calToday = Calendar.getInstance();
-
+                    
+                    calDataHoraIni_02 = Calendar.getInstance();
+                    calDataHoraFim_02 = Calendar.getInstance();
+                    calDateTimePlus60_02 = 0;
+                    calDateTimeMinus60_02 = 0;
+                    minutosIni_02 = 0;
+                    minutosFim_02 = 0;
+                    
                     calDateTimePlus60 = 0;
                     calDateTimeMinus60 = 0;
                     minutosToday = 0;
                     minutosIni = 0;
                     minutosFim = 0;
                     
-                    nQtdeAcessos = 0;
+                    nQtdeAcessos = 0;                   
                     
-
+                    //Calculamos quando o intervalo for do mesmo dia
                     calDateIni.setTime(timeStamp_ini);            
                     System.out.println("calDateIni = " + calDateIni.getTimeInMillis());
-                    calDateIni.add(Calendar.MINUTE, -61); //Data entrada permitida = 1hora antes
+                    //calDateIni.add(Calendar.MINUTE, -61); //Data entrada permitida = 1hora antes
+                    calDateIni.add(Calendar.MINUTE, -nTolerancia); //Data entrada permitida = 1hora antes
                     calDateTimeMinus60 = calDateIni.getTimeInMillis();
                     System.out.println("calDateIni - 61 min = " + calDateIni.getTimeInMillis());
                     minutosIni = (calDateTimeMinus60/1000)/60;
@@ -549,16 +583,31 @@ public int isJornada12Horas(int id_funcionario){
 
                     calDateFim.setTime(timeStamp_ini);            
                     System.out.println("calDateFim = " + calDateFim.getTimeInMillis());
-                    calDateFim.add(Calendar.MINUTE, 781); // data de saida permitida = 13 horas (jornada 12hr+1hr)
+                    //calDateFim.add(Calendar.MINUTE, 781); // data de saida permitida = 13 horas (jornada 12hr+1hr)
+                    calDateFim.add(Calendar.MINUTE, nTolerancia12hrs); // data de saida permitida = 13 horas (jornada 12hr+1hr)
                     calDateTimePlus60 = calDateFim.getTimeInMillis();
                     System.out.println("calDateFim = (calDateIni + 13hr) = " + calDateFim.getTimeInMillis());
                     minutosFim = (calDateTimePlus60/1000)/60;
                     System.out.println("minutosFim = " + minutosFim);
+                    
+                    //Calculamos quando o intervalo não for do mesmo dia
+                    
+                    calDataHoraIni_02.setTime(timeStamp_hora_saida);
+                    calDataHoraIni_02.add(Calendar.MINUTE, -nTolerancia12hrs);
+                    calDateTimeMinus60_02 = calDataHoraIni_02.getTimeInMillis();
+                    minutosIni_02 = (calDateTimeMinus60_02/1000)/60;
+                    
+                    calDataHoraFim_02.setTime(timeStamp_hora_saida);
+                    calDataHoraFim_02.add(Calendar.MINUTE, +nTolerancia02);
+                    calDateTimePlus60_02 = calDataHoraFim_02.getTimeInMillis();
+                    minutosFim_02 = (calDateTimePlus60_02/1000)/60;
+                    
+                    //Calculamos hora atual
 
                     System.out.println("calToday = " + calToday.getTime());
                     minutosToday = (calToday.getTimeInMillis()/1000)/60;
                     System.out.println("minutosToday = " + minutosToday);
-
+                  
                     //Verificamos se minutosToday está dentro do tempo permitido para bater ponto
                     if ((minutosIni < minutosToday) && (minutosFim > minutosToday))
                     {
@@ -581,7 +630,27 @@ public int isJornada12Horas(int id_funcionario){
                         //return 1; // 1 = SIM Está dentro do intervalo permitido
                         return nQtdeAcessos;
 
-                    } else {
+                    } else if((minutosIni_02 < minutosToday) && (minutosFim_02 > minutosToday)) {
+                        System.out.println(" Data e hora: " +  minutosToday +" está depois do horário minutosIni_02 = " + minutosIni_02 );
+                        System.out.println(" Data e hora: " +  minutosToday+" está antes do horário minutosFim_02 = " + minutosFim_02 );
+                        System.out.println("1 = SIM Está dentro do intervalo permitido");
+                        
+                        strDataInicial = "";
+                        strDataFinal = "";
+                        data_inicial = Calendar.getInstance();
+                        data_final = Calendar.getInstance();
+                
+                        data_inicial.setTimeInMillis(calDateTimeMinus60_02);
+                        data_final.setTimeInMillis(calDateTimePlus60_02);
+                
+                        strDataInicial = dfAtual.format(data_inicial.getTime())+".000";
+                        strDataFinal = dfAtual.format(data_final.getTime())+".000";
+                        
+                        nQtdeAcessos = buscarAcessosDiaFuncionarioJornada12Horas(id_funcionario, strDataInicial, strDataFinal);
+                        
+                        return nQtdeAcessos;
+                    }
+                    else {
                         System.out.println("Data e hora Today : " +  minutosToday +" está antes do horário minutosIni = " + minutosIni );
                         System.out.println("Horário minutosFim = " + minutosFim + " está depois do Data e hora Today: " +  minutosToday );
                         System.out.println("2 = NÃO Está dentro do intervalo permitido");

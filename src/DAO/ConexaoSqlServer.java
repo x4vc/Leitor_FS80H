@@ -21,7 +21,7 @@ public class ConexaoSqlServer implements iConexao {
     private String dataBase = "DB_ACESSO";
     //--------------------------------------------------
     //  Base de dados Teste/Homologação
-   // private String dataBase = "DB_ACESSO_HOMOLOG";
+    //private String dataBase = "DB_ACESSO_HOMOLOG";
     private String usuario = "acesso";
     private String senha = "#4c3ss0$";
     private final String driverName = "com.microsoft.sqlserver.jdbc.SQLServerDriver";
